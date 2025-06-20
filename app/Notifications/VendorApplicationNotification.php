@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log; // Add Log facade for debugging
+use Illuminate\Support\Facades\Log;
 
 class VendorApplicationNotification extends Notification implements ShouldQueue
 {
@@ -26,13 +26,9 @@ class VendorApplicationNotification extends Notification implements ShouldQueue
         return ['database'];
     }
 
-    /**
-     * Get the array representation of the notification.
-     */
     public function toArray(object $notifiable): array
     {
-        Log::info('VendorApplicationNotification: toArray method called. Status: ' . $this->status); // <--- ADD THIS LOG
-        // dd([$this->applicant->toArray(), $this->status, $notifiable->toArray()]); // <-- UNCOMMENT FOR IMMEDIATE DEBUGGING
+        // Log::info('VendorApplicationNotification: toArray method called. Status: ' . $this->status); // REMOVED LOG
 
         $message = '';
         $url = '';
@@ -62,7 +58,7 @@ class VendorApplicationNotification extends Notification implements ShouldQueue
             'icon' => $icon,
         ];
 
-        Log::info('VendorApplicationNotification: Data prepared for DB: ' . json_encode($notificationData)); // <--- ADD THIS LOG
-        return $notificationData;
+        // --- CRITICAL: Explicitly set source_type for VendorApplicationNotification ---
+        return array_merge($notificationData, ['source_type' => 'application']); // <--- ENSURE THIS IS PRESENT AND CORRECT
     }
 }

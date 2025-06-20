@@ -17,7 +17,7 @@ class Order extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [ // THIS IS THE ONLY $fillable DECLARATION YOU SHOULD HAVE
+    protected $fillable = [
         'user_id',
         'order_number',
         'total_amount',
@@ -27,8 +27,8 @@ class Order extends Model
         'billing_address',
         'payment_method',
         'notes',
-        'shipping_method_id', // Make sure these are inside this one array
-        'shipping_cost',      // Make sure these are inside this one array
+        'shipping_method_id',
+        'shipping_cost',
     ];
 
     /**
@@ -41,10 +41,6 @@ class Order extends Model
         'shipping_cost' => 'decimal:2',
     ];
 
-    /**
-     * The "booted" method of the model.
-     * Generates a unique order number before creating.
-     */
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
@@ -54,9 +50,6 @@ class Order extends Model
         });
     }
 
-    /**
-     * Generate a unique order number.
-     */
     protected static function generateUniqueOrderNumber(): string
     {
         do {
@@ -67,25 +60,16 @@ class Order extends Model
     }
 
 
-    /**
-     * Get the user that owns the order.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the order items for the order.
-     */
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
 
-    /**
-     * Get the shipping method for the order.
-     */
     public function shippingMethod(): BelongsTo
     {
         return $this->belongsTo(ShippingMethod::class);

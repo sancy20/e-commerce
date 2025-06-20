@@ -13,8 +13,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="font-sans antialiased bg-gray-100">
     <div class="flex h-screen">
@@ -23,9 +21,10 @@
                 Admin Panel
             </div>
             <nav class="mt-4">
+                <a href="{{ route('products.index') }}" class="block px-4 py-2 hover:bg-gray-700">Store</a>
                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
                 <a href="{{ route('admin.users.index') }}" class="block px-4 py-2 hover:bg-gray-700">Users</a>
-                <a href="{{ route('admin.inquiries.index') }}" class="block px-4 py-2 hover:bg-gray-700">Inquiries</a>
+                <!-- <a href="{{ route('admin.inquiries.index') }}" class="block px-4 py-2 hover:bg-gray-700">Inquiries</a> -->
                 <a href="{{ route('admin.orders.index') }}" class="block px-4 py-2 hover:bg-gray-700">Orders</a>
                 <a href="{{ route('admin.products.index') }}" class="block px-4 py-2 hover:bg-gray-700">Products</a>
                 <a href="{{ route('admin.categories.index') }}" class="block px-4 py-2 hover:bg-gray-700">Categories</a>
@@ -41,9 +40,9 @@
             <header class="flex justify-between items-center bg-white shadow p-4">
                 <div class="text-xl font-semibold">@yield('title')</div>
                 <div class="flex items-center space-x-4">
-                    @auth
+                    <!-- @auth
                         @include('partials.notification_bell')
-                    @endauth
+                    @endauth -->
                     @auth
                         @include('partials.mail_icon')
                     @endauth

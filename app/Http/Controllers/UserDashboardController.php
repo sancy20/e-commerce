@@ -5,13 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use App\Models\Order; // Import Order model
+use App\Models\Order;
 
 class UserDashboardController extends Controller
 {
-    /**
-     * Display the main user dashboard.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -20,9 +17,6 @@ class UserDashboardController extends Controller
         return view('dashboard.index', compact('user', 'recentOrders'));
     }
 
-    /**
-     * Display a listing of all orders for the authenticated user.
-     */
     public function orders()
     {
         $user = Auth::user();
@@ -31,34 +25,24 @@ class UserDashboardController extends Controller
         return view('dashboard.orders', compact('orders'));
     }
 
-    /**
-     * Display a single order for the authenticated user.
-     */
     public function showOrder(Order $order)
     {
-        // Ensure the order belongs to the authenticated user
         if ($order->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
 
-        $order->load('orderItems.product', 'shippingMethod'); // Eager load details
+        $order->load('orderItems.product', 'shippingMethod');
 
         return view('dashboard.show_order', compact('order'));
     }
 
 
-    /**
-     * Display the user's profile editing form.
-     */
     public function profile()
     {
         $user = Auth::user();
         return view('dashboard.profile', compact('user'));
     }
 
-    /**
-     * Update the user's profile information.
-     */
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
@@ -72,15 +56,14 @@ class UserDashboardController extends Controller
                 'max:255',
                 Rule::unique('users')->ignore($user->id),
             ],
-            // You can add more fields here, like address, phone etc.
             'address' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $user->name = $request->name;
         $user->email = $request->email;
-        $user->address = $request->address; // Assuming you added this to users table
-        $user->phone = $request->phone;     // Assuming you added this to users table
+        $user->address = $request->address;
+        $user->phone = $request->phone;
         $user->save();
 
         return redirect()->route('dashboard.profile')->with('success', 'Profile updated successfully!');

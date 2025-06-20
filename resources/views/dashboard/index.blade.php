@@ -20,12 +20,29 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         {{-- Sidebar Navigation --}}
         <div class="md:col-span-1 bg-white rounded-lg shadow-md p-6">
-            <nav class="space-y-2">
+            <nav class="space-y-1">
                 <a href="{{ route('dashboard.index') }}" class="block px-4 py-2 text-lg font-medium text-blue-700 bg-blue-50 rounded-md">Dashboard Overview</a>
                 <a href="{{ route('dashboard.orders') }}" class="block px-4 py-2 text-lg text-gray-700 hover:bg-gray-100 rounded-md">My Orders</a>
                 <a href="{{ route('dashboard.profile') }}" class="block px-4 py-2 text-lg text-gray-700 hover:bg-gray-100 rounded-md">My Profile</a>
-                <a href="{{ route('wishlist.index') }}" class="block px-4 py-2 text-lg text-gray-700 hover:bg-gray-100 rounded-md">My Wishlist</a> {{-- ADD THIS LINE --}}
-                {{-- Add more links here (e.g., Addresses, Payment Methods) --}}
+                <a href="{{ route('wishlist.index') }}" class="block px-4 py-2 text-lg text-gray-700 hover:bg-gray-100 rounded-md">My Wishlist</a>
+                
+                @if(auth()->user() && auth()->user()->isVendor())
+                    <div class="border-t pt-2 mt-2">
+                        <span class="block px-4 pt-2 text-xs font-semibold text-gray-500 uppercase">Vendor Panel</span>
+                        <a href="{{ route('vendor.dashboard') }}" class="block px-4 py-2 text-lg text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-md">
+                            Go to Vendor Dashboard
+                        </a>
+                    </div>
+                @endif
+
+                <div class="border-t pt-2 mt-2">
+                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                        @csrf
+                        <button type="submit" class="block w-full text-left px-4 py-2 text-lg text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-md">
+                            Logout
+                        </button>
+                    </form>
+                </div>
             </nav>
         </div>
 

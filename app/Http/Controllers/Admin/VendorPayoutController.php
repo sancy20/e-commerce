@@ -3,37 +3,29 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\VendorPayout; // Import VendorPayout model
-use App\Models\User;         // Import User model
+use App\Models\VendorPayout;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Carbon\Carbon;            // For current timestamp
-use Illuminate\Support\Facades\Log; // For logging
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class VendorPayoutController extends Controller
 {
-    /**
-     * Display a listing of vendor payouts (history) and outstanding balances.
-     */
     public function index()
     {
-        // Get all approved vendors with their outstanding balances
         $vendors = User::where('vendor_status', 'approved_vendor')
-                       ->where('is_admin', false) // Optionally exclude admin users who are also vendors
+                       ->where('is_admin', false)
                        ->orderBy('name')
                        ->get();
 
-        // Get recent payout history
         $recentPayouts = VendorPayout::with('vendor')
                                       ->orderBy('paid_at', 'desc')
-                                      ->take(10) // Show last 10 payouts
+                                      ->take(10)
                                       ->get();
 
         return view('admin.vendor_payouts.index', compact('vendors', 'recentPayouts'));
     }
 
-    /**
-     * Store a newly created payout record in storage (marking an amount as paid).
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -45,7 +37,6 @@ class VendorPayoutController extends Controller
 
         $vendor = User::find($request->vendor_id);
 
-        // Basic validation to prevent overpaying (optional but good)
         if ($vendor->getOutstandingPayoutAmount() < $request->amount) {
             return redirect()->back()->with('error', 'Cannot pay more than the outstanding amount for this vendor.');
         }
@@ -54,7 +45,7 @@ class VendorPayoutController extends Controller
             VendorPayout::create([
                 'vendor_id' => $request->vendor_id,
                 'amount' => $request->amount,
-                'status' => 'completed', // Assuming creation means it's completed
+                'status' => 'completed',
                 'payment_method' => $request->payment_method,
                 'notes' => $request->notes,
                 'paid_at' => Carbon::now(),
@@ -69,9 +60,6 @@ class VendorPayoutController extends Controller
         }
     }
 
-    /**
-     * Delete a payout record (for corrections). Use with caution.
-     */
     public function destroy(VendorPayout $vendorPayout)
     {
         try {
@@ -85,6 +73,4 @@ class VendorPayoutController extends Controller
             return redirect()->back()->with('error', 'Failed to delete payout record: ' . $e->getMessage());
         }
     }
-
-    // create, edit, show methods are excluded for simplicity of this resource
 }

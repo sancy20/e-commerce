@@ -16,12 +16,10 @@ class IsVendor
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Allow access if user is logged in AND their vendor_status is 'approved_vendor'
-        if (Auth::check() && Auth::user()->isVendor()) { // isVendor() checks for 'approved_vendor'
+        if (Auth::check() && Auth::user()->isVendor()) {
             return $next($request);
         }
 
-        // Redirect or abort if not an approved vendor
         return redirect()->route('dashboard.index')->with('error', 'Access Denied: You are not an approved vendor.');
     }
 }

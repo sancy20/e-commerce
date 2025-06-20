@@ -71,7 +71,7 @@
                         @enderror
                     </div>
 
-                    {{-- If you want vendors to manage payment status (uncomment and test carefully) --}}
+                    {{-- vendors to manage payment status --}}
                     {{-- <div class="mb-4">
                         <label for="payment_status" class="block text-gray-700 text-sm font-bold mb-2">Payment Status:</label>
                         <select name="payment_status" id="payment_status" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline @error('payment_status') border-red-500 @enderror" required>

@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('order_items', function (Blueprint $table) {
-            // Add product_variant_id, nullable to support base products without variants
-            $table->foreignId('product_variant_id')->nullable()->constrained('product_variants')->onDelete('set null')->after('product_id');
+            $table->foreignId('product_variant_id')->nullable()->after('product_id')->constrained('product_variants')->onDelete('set null');
         });
     }
 

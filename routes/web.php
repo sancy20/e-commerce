@@ -11,11 +11,11 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserDashboardController;
 use App\Http\Controllers\VendorApplicationController;
 use App\Http\Controllers\WishlistController;
-use App\Http\Controllers\InquiryController; // For customer inquiries
-use App\Http\Controllers\StripeWebhookController; // For Stripe webhooks
+use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\StripeWebhookController;
 
 // --- Admin Controllers (Aliased to avoid conflicts where necessary) ---
-use App\Http\Controllers\Admin\AdminDashboardController; // New Admin Dashboard Controller
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\OrderController;
@@ -37,21 +37,10 @@ use App\Http\Controllers\VendorReportController;
 use App\Http\Controllers\VendorUpgradeController;
 use App\Http\Controllers\VendorReviewController;
 use App\Http\Controllers\VendorConnectController;
+use App\Http\Controllers\VendorInquiryController;
 
 // --- Shared Notification Controller ---
 use App\Http\Controllers\NotificationController;
-
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
 
 // --- Frontend Public Routes ---
 
@@ -88,7 +77,6 @@ Route::middleware(['auth'])->prefix('checkout')->name('checkout.')->group(functi
 });
 
 // User Dashboard (Customer Panel)
-// This route handles the default redirect from Laravel Breeze's authentication
 Route::get('/dashboard', function () {
     return redirect()->route('dashboard.index');
 })->name('dashboard')->middleware(['auth']);
@@ -125,7 +113,6 @@ Route::middleware(['auth'])->prefix('inquiries')->name('inquiries.')->group(func
 
 
 // --- Notification AJAX Routes (for bell & mail icons) ---
-// Handles fetching and marking notifications/inquiries as read
 Route::middleware(['auth'])->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/unread', [NotificationController::class, 'getUnreadNotifications'])->name('unread');
     Route::post('/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('mark_as_read');
@@ -144,15 +131,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Admin Inquiry Management (for admin to review messages from customers)
     Route::resource('inquiries', AdminInquiryController::class)->except(['create', 'store', 'edit']);
-    Route::post('inquiries/{inquiry}/mark-as-read', [AdminInquiryController::class, 'markAsRead'])->name('inquiries.mark_as_read'); // Separate action
+    Route::post('inquiries/{inquiry}/mark-as-read', [AdminInquiryController::class, 'markAsRead'])->name('inquiries.mark_as_read');
 
     // Orders Management
     Route::resource('orders', OrderController::class)->except(['create', 'store']);
 
     // Products & Product Variants Management
-    Route::resource('products', AdminProductController::class); // Main Product CRUD
-    Route::resource('products.variants', ProductVariantController::class); // Nested Variants
-    Route::get('/attributes/{attribute}/values', [ProductVariantController::class, 'getValuesByAttribute'])->name('attributes.values'); // Helper for variant forms
+    Route::resource('products', AdminProductController::class);
+    Route::resource('products.variants', ProductVariantController::class);
+    Route::get('/attributes/{attribute}/values', [ProductVariantController::class, 'getValuesByAttribute'])->name('attributes.values'); 
 
     // Categories Management
     Route::resource('categories', CategoryController::class);
@@ -169,7 +156,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Reports (grouped under /admin/reports)
     Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index'); // Main reports dashboard
+        Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/sales-by-date', [ReportController::class, 'salesByDate'])->name('sales-by-date');
         Route::get('/product-sales', [ReportController::class, 'productSales'])->name('product-sales');
         Route::get('/category-sales', [ReportController::class, 'categorySales'])->name('category-sales');
@@ -182,17 +169,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
 // --- Vendor Panel Routes (Protected by 'auth' and 'is_vendor' middleware) ---
 Route::middleware(['auth', 'is_vendor'])->prefix('vendor')->name('vendor.')->group(function () {
-    Route::get('/dashboard', [VendorDashboardController::class, 'index'])->name('dashboard'); // Main vendor dashboard
+    Route::get('/dashboard', [VendorDashboardController::class, 'index'])->name('dashboard'); 
 
     // Vendor Product Management
-    Route::resource('products', VendorProductController::class); // Vendor only manages THEIR products
+    Route::resource('products', VendorProductController::class);
 
     // Vendor Order Management
     Route::get('/orders', [VendorOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [VendorOrderController::class, 'show'])->name('orders.show');
     Route::get('/orders/{order}/edit', [VendorOrderController::class, 'edit'])->name('orders.edit');
     Route::put('/orders/{order}', [VendorOrderController::class, 'update'])->name('orders.update');
-    // Note: No vendor.orders.destroy route defined (order deletion restricted to admin)
+    Route::delete('orders/{order}', [VendorOrderController::class, 'destroy'])->name('orders.destroy');
 
     // Vendor Reports
     Route::get('/reports', [VendorReportController::class, 'index'])->name('reports.index');
@@ -213,12 +200,13 @@ Route::middleware(['auth', 'is_vendor'])->prefix('vendor')->name('vendor.')->gro
     // Vendor Reviews
     Route::get('/reviews', [VendorReviewController::class, 'index'])->name('reviews.index');
     Route::get('/reviews/{review}', [VendorReviewController::class, 'show'])->name('reviews.show');
-    Route::put('/reviews/{review}', [VendorReviewController::class, 'update'])->name('reviews.update'); // For vendor reply
+    Route::put('/reviews/{review}', [VendorReviewController::class, 'update'])->name('reviews.update'); 
 
-
+    Route::get('/inquiries', [VendorInquiryController::class, 'index'])->name('inquiries.index');
+    Route::get('/inquiries/{inquiry}', [VendorInquiryController::class, 'show'])->name('inquiries.show');
+    Route::put('/inquiries/{inquiry}', [VendorInquiryController::class, 'update'])->name('inquiries.update');
+    Route::post('/inquiries/{inquiry}/mark-as-read', [VendorInquiryController::class, 'markAsRead'])->name('inquiries.mark_as_read');
+    Route::delete('/inquiries/{inquiry}', [VendorInquiryController::class, 'destroy'])->name('inquiries.destroy');
 });
 
-
-// Laravel Breeze/Jetstream Authentication Routes
-// This line includes routes for /login, /register, /logout, /forgot-password, etc.
 require __DIR__.'/auth.php';

@@ -34,12 +34,6 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse ($reviews as $review)
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{{ $review->id }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <a href="{{ route('products.show', $review->product->slug ?? '#') }}" target="_blank" class="text-blue-600 hover:underline">
-                                {{ $review->product->name ?? 'Product Deleted' }}
-                            </a>
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $review->user->name ?? 'User Deleted' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <span class="text-yellow-500">

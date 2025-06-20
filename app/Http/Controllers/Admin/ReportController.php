@@ -5,20 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\Request;
-use Carbon\Carbon; // For date manipulation
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    /**
-     * Display the main reports dashboard.
-     */
     public function index(Request $request)
     {
-        // Default date range: Last 30 days
         $startDate = $request->input('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
 
-        // Ensure dates are valid and end_date is not before start_date
         try {
             $startDate = Carbon::parse($startDate)->startOfDay();
             $endDate = Carbon::parse($endDate)->endOfDay();
@@ -29,10 +24,8 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Invalid date range: ' . $e->getMessage());
         }
 
-
-        // --- Summary Statistics ---
         $totalRevenue = Order::whereBetween('created_at', [$startDate, $endDate])
-                             ->where('payment_status', 'paid') // Only count paid orders
+                             ->where('payment_status', 'paid')
                              ->sum('total_amount');
 
         $totalOrders = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -47,12 +40,8 @@ class ReportController extends Controller
         ));
     }
 
-    /**
-     * Report: Sales by Date
-     */
     public function salesByDate(Request $request)
     {
-        // Default date range: Last 30 days
         $startDate = $request->input('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
 
@@ -76,12 +65,8 @@ class ReportController extends Controller
         return view('admin.reports.sales_by_date', compact('salesData', 'startDate', 'endDate'));
     }
 
-    /**
-     * Report: Best Selling Products
-     */
     public function productSales(Request $request)
     {
-        // Default date range: Last 30 days
         $startDate = $request->input('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
 
@@ -109,12 +94,8 @@ class ReportController extends Controller
         return view('admin.reports.product_sales', compact('productSales', 'startDate', 'endDate'));
     }
 
-    /**
-     * Report: Best Selling Categories
-     */
     public function categorySales(Request $request)
     {
-        // Default date range: Last 30 days
         $startDate = $request->input('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
 

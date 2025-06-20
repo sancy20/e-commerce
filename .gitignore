@@ -24,3 +24,11 @@ Homestead.yaml
 npm-debug.log
 Thumbs.db
 yarn-error.log
+
+/node_modules
+/public/build
+/public/storage
+/vendor
+.env
+.env.backup
+*.log

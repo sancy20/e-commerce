@@ -6,38 +6,26 @@ use App\Models\Review;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 class NewReviewNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     public Review $review;
-    public string $recipientType; // 'admin' or 'vendor'
+    public string $recipientType;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct(Review $review, string $recipientType = 'admin')
     {
         $this->review = $review;
         $this->recipientType = $recipientType;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(object $notifiable): array
     {
         $message = '';
@@ -46,10 +34,10 @@ class NewReviewNotification extends Notification implements ShouldQueue
 
         if ($this->recipientType === 'admin') {
             $message = 'New review (rating: ' . $this->review->rating . ') for product "' . ($this->review->product->name ?? 'N/A') . '" by ' . ($this->review->user->name ?? 'Guest') . '.';
-            $url = route('admin.reviews.edit', $this->review->id); // Link to admin review moderation
+            $url = route('admin.reviews.edit', $this->review->id);
         } elseif ($this->recipientType === 'vendor') {
             $message = 'New review (rating: ' . $this->review->rating . ') received for your product "' . ($this->review->product->name ?? 'N/A') . '".';
-            $url = route('vendor.reviews.show', $this->review->id); // Link to vendor's review view
+            $url = route('vendor.reviews.show', $this->review->id);
         }
 
         return [
@@ -61,6 +49,7 @@ class NewReviewNotification extends Notification implements ShouldQueue
             'message' => $message,
             'url' => $url,
             'icon' => $icon,
+            'source_type' => 'review', // <--- ENSURE THIS IS PRESENT AND CORRECT
         ];
     }
 }

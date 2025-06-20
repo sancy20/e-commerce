@@ -4,24 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Wishlist; // Import Wishlist model
+use App\Models\Wishlist;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class WishlistController extends Controller
 {
-    /**
-     * Display the user's wishlist.
-     */
     public function index()
     {
         $wishlists = Auth::user()->wishlists()->with(['product.variants.attributeValues', 'productVariant.attributeValues.attribute'])->get();
         return view('wishlist.index', compact('wishlists'));
     }
 
-    /**
-     * Add a product/variant to the wishlist.
-     */
     public function add(Request $request)
     {
         $request->validate([
@@ -47,7 +41,6 @@ class WishlistController extends Controller
             $itemName = $product->name;
         }
 
-        // Check if already in wishlist
         $existing = Wishlist::where('user_id', Auth::id())
                             ->where('product_id', $product->id)
                             ->where('product_variant_id', $product_variant_id)
@@ -66,12 +59,8 @@ class WishlistController extends Controller
         return redirect()->back()->with('success', $itemName . ' added to your wishlist!');
     }
 
-    /**
-     * Remove an item from the wishlist.
-     */
     public function remove(Wishlist $wishlist)
     {
-        // Ensure the wishlist item belongs to the authenticated user
         if ($wishlist->user_id !== Auth::id()) {
             abort(403);
         }
@@ -82,12 +71,8 @@ class WishlistController extends Controller
         return redirect()->back()->with('success', $itemName . ' removed from wishlist.');
     }
 
-    /**
-     * Move an item from wishlist to cart.
-     */
     public function moveToCart(Request $request, Wishlist $wishlist)
     {
-        // Ensure the wishlist item belongs to the authenticated user
         if ($wishlist->user_id !== Auth::id()) {
             abort(403);
         }
@@ -104,14 +89,12 @@ class WishlistController extends Controller
         $cart = Session::get('cart', []);
         $itemIdentifier = $variant ? 'variant_' . $variant->id : $product->id;
 
-        // Check current quantity in cart
         $currentQuantityInCart = $cart[$itemIdentifier]['quantity'] ?? 0;
         if ($currentQuantityInCart >= $itemStock) {
              return redirect()->back()->with('info', $itemName . ' is already at max stock in your cart.');
         }
 
 
-        // Add to cart logic (similar to CartController@add, but for 1 item)
         $cart[$itemIdentifier] = [
             'product_id' => $product->id,
             'product_variant_id' => $variant ? $variant->id : null,
@@ -119,13 +102,13 @@ class WishlistController extends Controller
             'price' => (float)($variant->price ?? $product->price),
             'image' => $variant->image ?? $product->image,
             'sku' => $variant->sku ?? $product->sku,
-            'quantity' => 1, // Add 1 by default when moving from wishlist
+            'quantity' => 1,
             'is_variant' => (bool)$variant,
         ];
 
         Session::put('cart', $cart);
 
-        $wishlist->delete(); // Remove from wishlist after moving to cart
+        $wishlist->delete();
 
         return redirect()->route('cart.index')->with('success', $itemName . ' moved to cart!');
     }
