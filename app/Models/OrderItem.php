@@ -36,17 +36,11 @@ class OrderItem extends Model
         'vendor_payout_amount' => 'decimal:2',
     ];
 
-    /**
-     * Get the order that owns the order item.
-     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    /**
-     * Get the product associated with the order item.
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
@@ -55,5 +49,10 @@ class OrderItem extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

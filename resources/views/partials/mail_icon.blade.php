@@ -1,200 +1,155 @@
-<div class="relative inline-block text-left ml-4" x-data="{ open: false, activeTab: 'general' }" @click.away="open = false">
-    <button type="button" @click="open = !open; if (open) fetchInquiries();" class="inline-flex justify-center w-full rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
+<div
+    x-data="mailIconComponent()"
+    x-init="init()"
+    class="relative inline-block text-left ml-4"
+    @click.away="open = false"
+>
+    <button @click="toggle" type="button" class="inline-flex justify-center w-full rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
         <i class="fas fa-envelope text-xl text-gray-600"></i>
-        <span id="unread-inquiries-count" class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" style="display: none;">0</span>
+        <span x-show="count > 0" x-text="count" class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"></span>
     </button>
 
-    <div x-show="open"
-         x-transition:enter="transition ease-out duration-100"
-         x-transition:enter-start="transform opacity-0 scale-95"
-         x-transition:enter-end="transform opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-75"
-         x-transition:leave-start="transform opacity-100 scale-100"
-         x-transition:leave-end="transform opacity-0 scale-95"
-         class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-         role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+    <div
+        x-show="open"
+        x-transition
+        class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+    >
         <div class="py-1" role="none">
             {{-- Tab Buttons --}}
             <div class="flex border-b border-gray-200">
-                <button @click="activeTab = 'general'"
-                        :class="{ 'border-b-2 border-indigo-500 text-indigo-600': activeTab === 'general', 'text-gray-500 hover:text-gray-700': activeTab !== 'general' }"
+                <button @click="activeTab = 'direct_messages'"
+                        :class="{ 'border-b-2 border-indigo-500 text-indigo-600': activeTab === 'direct_messages', 'text-gray-500 hover:text-gray-700': activeTab !== 'direct_messages' }"
                         class="flex-1 py-2 text-sm font-medium text-center focus:outline-none hover:bg-gray-50">
-                    General (<span id="general-inquiries-count">0</span>)
+                    Messages (<span x-text="directMessagesList.length"></span>)
                 </button>
-                <button @click="activeTab = 'email'"
-                        :class="{ 'border-b-2 border-indigo-500 text-indigo-600': activeTab === 'email', 'text-gray-500 hover:text-gray-700': activeTab !== 'email' }"
+                <button @click="activeTab = 'applications'"
+                        :class="{ 'border-b-2 border-indigo-500 text-indigo-600': activeTab === 'applications', 'text-gray-500 hover:text-gray-700': activeTab !== 'applications' }"
                         class="flex-1 py-2 text-sm font-medium text-center focus:outline-none hover:bg-gray-50">
-                    Email (<span id="email-inquiries-count">0</span>)
+                    Applications (<span x-text="applicationsList.length"></span>)
                 </button>
             </div>
 
             <div class="px-4 py-2 text-sm font-semibold border-b border-gray-200">
                 Messages
-                <span id="inquiry-spinner" class="ml-2 text-gray-500 hidden"><i class="fas fa-spinner fa-spin"></i></span>
-            </div>
-            
-            {{-- Tab Content (General Inquiries) --}}
-            <div x-show="activeTab === 'general'" id="general-inquiries-list-container" class="max-h-60 overflow-y-auto">
-                <p class="text-center text-gray-500 py-4" id="no-general-inquiries-message">No unread general messages.</p>
+                <span x-show="isLoading" class="ml-2 text-gray-500"><i class="fas fa-spinner fa-spin"></i></span>
             </div>
 
-            {{-- Tab Content (Email Inquiries) --}}
-            <div x-show="activeTab === 'email'" id="email-inquiries-list-container" class="max-h-60 overflow-y-auto">
-                <p class="text-center text-gray-500 py-4" id="no-email-inquiries-message">No unread email messages.</p>
+            {{-- Direct Messages List --}}
+            <div x-show="activeTab === 'direct_messages'" class="max-h-60 overflow-y-auto">
+                <template x-if="directMessagesList.length === 0">
+                    <p class="text-center text-gray-500 py-4">No unread messages.</p>
+                </template>
+                <template x-for="inquiry in directMessagesList" :key="inquiry.notification_id">
+                    <a :href="inquiry.url" class="flex items-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                        <i :class="`fas ${inquiry.icon || 'fa-info-circle'} mt-1 mr-3 text-lg text-gray-500`"></i>
+                        <div class="flex-1">
+                            <p class="font-medium" x-text="inquiry.message"></p>
+                            <p class="text-xs text-gray-500" x-text="inquiry.created_at_for_humans"></p>
+                        </div>
+                        <button @click.prevent.stop="markAsRead(inquiry.notification_id)" type="button" class="ml-2 px-2 py-1 rounded-full text-xs text-blue-600 hover:bg-blue-100" title="Mark as Read">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </a>
+                </template>
+            </div>
+
+            {{-- Applications List --}}
+            <div x-show="activeTab === 'applications'" class="max-h-60 overflow-y-auto">
+                <template x-if="applicationsList.length === 0">
+                    <p class="text-center text-gray-500 py-4">No unread applications.</p>
+                </template>
+                 <template x-for="inquiry in applicationsList" :key="inquiry.notification_id">
+                    <a :href="inquiry.url" class="flex items-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                        <i :class="`fas ${inquiry.icon || 'fa-info-circle'} mt-1 mr-3 text-lg text-gray-500`"></i>
+                        <div class="flex-1">
+                            <p class="font-medium" x-text="inquiry.message"></p>
+                            <p class="text-xs text-gray-500" x-text="inquiry.created_at_for_humans"></p>
+                        </div>
+                        <button @click.prevent.stop="markAsRead(inquiry.notification_id)" type="button" class="ml-2 px-2 py-1 rounded-full text-xs text-blue-600 hover:bg-blue-100" title="Mark as Read">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </a>
+                </template>
             </div>
 
             <div class="border-t border-gray-200 py-1" role="none">
-                <button type="button" id="mark-all-inquiries-as-read-btn" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1">Mark all as read</button>
-                <a href="{{ route('admin.inquiries.index') }}" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" role="menuitem" tabindex="-1">View all messages</a>
+                <button @click="markAllAsRead" type="button" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">Mark all as read</button>
+                <a href="{{ route('admin.inquiries.index') }}" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">View all messages</a>
             </div>
         </div>
-    </div>
+</div>
 
-    @push('scripts')
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const unreadInquiriesCountSpan = document.getElementById('unread-inquiries-count');
-        const generalInquiriesListContainer = document.getElementById('general-inquiries-list-container');
-        const emailInquiriesListContainer = document.getElementById('email-inquiries-list-container');
-        const markAllInquiriesAsReadBtn = document.getElementById('mark-all-inquiries-as-read-btn');
-        const noGeneralInquiriesMessage = document.getElementById('no-general-inquiries-message');
-        const noEmailInquiriesMessage = document.getElementById('no-email-inquiries-message');
-        const inquirySpinner = document.getElementById('inquiry-spinner');
+@push('scripts')
+<script>
+    function mailIconComponent() {
+        return {
+            open: false,
+            isLoading: false,
+            activeTab: 'direct_messages',
+            count: 0,
+            allInquiries: [],
+            
+            get directMessagesList() {
+                return this.allInquiries.filter(notif =>
+                    notif.source_type === 'general' || (notif.source_type === 'unknown' && notif.type === 'new_inquiry')
+                );
+            },
+            get applicationsList() {
+                return this.allInquiries.filter(notif =>
+                    notif.source_type === 'application' ||
+                    notif.source_type === 'upgrade_request'
+                );
+            },
 
-        const generalCountSpan = document.getElementById('general-inquiries-count');
-        const emailCountSpan = document.getElementById('email-inquiries-count');
-
-        let allUnreadInquiries = [];
-
-        async function fetchInquiries() {
-            inquirySpinner.classList.remove('hidden');
-            try {
-                const response = await fetch('{{ route('notifications.unread') }}');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch notifications');
+            // Methods
+            init() {
+                this.fetchInquiries();
+                setInterval(() => this.fetchInquiries(), 30000);
+            },
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.fetchInquiries();
                 }
-                const data = await response.json();
-                
-                // =================================================================
-                // KEY CORRECTION 1: The filtering logic is fixed here.
-                // Instead of filtering by a restrictive `notif.type`, we now filter by `notif.data.source_type`.
-                // This ensures that any notification meant for either tab is included.
-                // =================================================================
-                allUnreadInquiries = data.notifications.filter(notif => 
-                        notif.type === 'new_inquiry' ||        // For general customer inquiries
-                        notif.type === 'vendor_application' || // For vendor application notifications
-                        notif.type === 'tier_upgrade_request'  // For tier upgrade request notifications
-                    );
-
-                unreadInquiriesCountSpan.textContent = allUnreadInquiries.length;
-                unreadInquiriesCountSpan.style.display = allUnreadInquiries.length > 0 ? 'inline' : 'none';
-
-                renderTabContent();
-
-            } catch (error) {
-                console.error('Error fetching inquiries:', error);
-            } finally {
-                inquirySpinner.classList.add('hidden');
-            }
-        }
-
-        function renderTabContent() {
-            // Filter inquiries for each specific tab
-            const generalInquiries = allUnreadInquiries.filter(notif => notif.data.source_type === 'general');
-            const emailInquiries = allUnreadInquiries.filter(notif => notif.data.source_type === 'email');
-
-            // Update tab counts
-            generalCountSpan.textContent = generalInquiries.length;
-            emailCountSpan.textContent = emailInquiries.length;
-
-            // Render content into both containers. Alpine.js's x-show will handle which one is visible.
-            renderInquiriesList(generalInquiriesListContainer, generalInquiries, noGeneralInquiriesMessage);
-            renderInquiriesList(emailInquiriesListContainer, emailInquiries, noEmailInquiriesMessage);
-        }
-
-        function renderInquiriesList(listElement, inquiries, noMessagesElement) {
-            listElement.innerHTML = ''; // Clear existing list
-            if (inquiries.length > 0) {
-                noMessagesElement.style.display = 'none'; // Hide the 'no messages' text
-                inquiries.forEach(inquiry => {
-                    const inquiryItem = document.createElement('a');
-                    inquiryItem.href = inquiry.data.url; // Use `inquiry.data.url` which is more standard for Laravel notifications
-                    inquiryItem.classList.add('flex', 'items-start', 'px-4', 'py-2', 'text-sm', 'text-gray-700', 'hover:bg-gray-100', 'hover:text-gray-900');
-                    
-                    let iconHtml = '';
-                    if (inquiry.data.icon) {
-                        iconHtml = `<i class="fas ${inquiry.data.icon} mt-1 mr-3 text-lg text-gray-500"></i>`;
-                    } else {
-                        // Default icon if not provided
-                        iconHtml = `<i class="fas fa-envelope mt-1 mr-3 text-lg text-gray-500"></i>`;
-                    }
-
-                    inquiryItem.innerHTML = `
-                        ${iconHtml}
-                        <div class="flex-1">
-                            <p class="font-medium">${inquiry.data.message}</p>
-                            <p class="text-xs text-gray-500">${inquiry.data.created_at_for_humans}</p>
-                        </div>
-                        <button type="button" class="mark-inquiry-as-read-btn ml-2 px-2 py-1 rounded-full text-xs text-blue-600 hover:bg-blue-100" data-notification-id="${inquiry.id}" title="Mark as Read">
-                            <i class="fas fa-check"></i>
-                        </button>
-                    `;
-                    listElement.appendChild(inquiryItem);
-                });
-            } else {
-                noMessagesElement.style.display = 'block'; // Show the 'no messages' text
-                // Ensure the placeholder is actually inside the listElement if it's cleared
-                listElement.appendChild(noMessagesElement);
-            }
-        }
-
-        document.querySelector('[x-data]').addEventListener('click', async function (event) {
-            if (event.target.closest('.mark-inquiry-as-read-btn')) {
-                event.preventDefault();
-                event.stopPropagation();
-                const button = event.target.closest('.mark-inquiry-as-read-btn');
-                const notificationId = button.dataset.notificationId;
-
+            },
+            async fetchInquiries() {
+                this.isLoading = true;
                 try {
-                    const response = await fetch(`{{ url('admin/notifications/mark-as-read') }}/${notificationId}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    if (!response.ok) throw new Error('Failed to mark inquiry as read');
-                    
-                    // Re-fetch inquiries to update the UI
-                    fetchInquiries();
+                    const response = await fetch('{{ route('notifications.unread') }}');
+                    const data = await response.json();
+                    const filtered = data.notifications.filter(notif =>
+                        notif.type === 'new_inquiry' ||
+                        notif.type === 'vendor_application' ||
+                        notif.type === 'tier_upgrade_request'
+                    );
+                    this.allInquiries = filtered;
+                    this.count = filtered.length;
                 } catch (error) {
-                    console.error('Error marking inquiry as read:', error);
+                    console.error('Error fetching inquiries:', error);
+                } finally {
+                    this.isLoading = false;
                 }
-            }
-        });
-
-        markAllInquiriesAsReadBtn.addEventListener('click', async function () {
-            try {
-                const response = await fetch('{{ route('notifications.mark_all_as_read') }}', {
+            },
+            async markAsRead(notificationId) {
+                this.allInquiries = this.allInquiries.filter(i => i.notification_id !== notificationId);
+                this.count = this.allInquiries.length;
+                
+                await fetch(`{{ route('notifications.mark_as_read', ['notification' => '__ID__']) }}`.replace('__ID__', notificationId), {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
                 });
-                if (!response.ok) throw new Error('Failed to mark all as read');
-                fetchInquiries();
-            } catch (error) {
-                console.error('Error marking all as read:', error);
+            },
+            async markAllAsRead() {
+                this.allInquiries = [];
+                this.count = 0;
+
+                await fetch('{{ route('notifications.mark_all_as_read') }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
+                });
             }
-        });
-
-        // Initial fetch on page load to set the correct initial count
-        fetchInquiries();
-
-        // Periodically fetch inquiries to keep the list up-to-date
-        setInterval(fetchInquiries, 30000); // 30 seconds
-    });
-    </script>
-    @endpush
+        }
+    }
+</script>
+@endpush
 </div>

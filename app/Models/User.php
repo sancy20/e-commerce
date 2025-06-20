@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -68,10 +69,7 @@ class User extends Authenticatable
         'charges_enabled' => 'boolean',
     ];
 
-    /**
-     * Get the orders for the user.
-     */
-    public function orders(): HasMany // <--- ADD THIS METHOD
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
@@ -133,7 +131,6 @@ class User extends Authenticatable
 
     public function getOutstandingPayoutAmount(): float
     {
-        // Sum of vendor_payout_amount from all their order_items in paid orders
         $totalEarned = \DB::table('order_items')
                            ->join('products', 'order_items.product_id', '=', 'products.id')
                            ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -141,15 +138,19 @@ class User extends Authenticatable
                            ->where('orders.payment_status', 'paid')
                            ->sum('order_items.vendor_payout_amount');
 
-        // Sum of all payouts already made to this vendor
         $totalPaid = $this->payouts()->where('status', 'completed')->sum('amount');
 
-        return (float) max(0, $totalEarned - $totalPaid); // Ensure it's not negative
+        return (float) max(0, $totalEarned - $totalPaid);
     }
 
     public function canReceivePayouts(): bool
     {
         return $this->isVendor() && $this->stripe_connect_id !== null && $this->payouts_enabled;
+    }
+    
+    public function tier(): BelongsTo
+    {
+        return $this->belongsTo(VendorTier::class, 'vendor_tier_id');
     }
 
 }

@@ -16,18 +16,14 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is logged in AND is an admin
-        if (Auth::check() && Auth::user()->isAdmin()) { // Use the isAdmin() helper method
+        if (Auth::check() && Auth::user()->isAdmin()) {
             return $next($request);
         }
 
-        // Redirect unauthenticated or non-admin users
-        // Redirect to login if not logged in, or to dashboard with error if logged in but not admin
         if (!Auth::check()) {
-            return redirect()->route('login'); // Or whatever your login route is
+            return redirect()->route('login');
         }
 
-        // User is logged in but not an admin
         return redirect()->route('dashboard.index')->with('error', 'Access Denied: You do not have administrator privileges.');
     }
 }

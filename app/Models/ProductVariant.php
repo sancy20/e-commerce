@@ -24,27 +24,30 @@ class ProductVariant extends Model
         'stock_quantity' => 'integer',
     ];
 
-    /**
-     * Get the base product that this variant belongs to.
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * The attribute values that define this variant.
-     */
+
     public function attributeValues(): BelongsToMany
     {
         return $this->belongsToMany(AttributeValue::class, 'attribute_product_variant');
     }
 
-    /**
-     * Helper to get a descriptive name for the variant (e.g., "Red / Large").
-     */
+    // public function attributeValues(): MorphToMany
+    // {
+    //     return $this->morphToMany(AttributeValue::class, 'attributable');
+    // }
+
     public function getVariantNameAttribute(): string
     {
-        return $this->attributeValues->pluck('value')->implode(' / ');
+
+        $this->loadMissing('attributeValues.attribute');
+        
+        return $this->attributeValues
+            ->sortBy('attribute.name')
+            ->map(fn($value) => $value->value)
+            ->implode(' / ');
     }
 }

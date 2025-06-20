@@ -39,7 +39,6 @@
         const notificationSpinner = document.getElementById('notification-spinner');
         const notificationBell = document.querySelector('.fa-bell');
 
-        // Function to fetch and render notifications
         async function fetchNotifications() {
             notificationSpinner.classList.remove('hidden');
             try {
@@ -57,7 +56,6 @@
             }
         }
 
-        // Function to update UI with new data
         function updateNotificationUI(count, notifications) {
             if (count > 0) {
                 unreadCountSpan.textContent = count;
@@ -97,9 +95,7 @@
             }
         }
 
-        // Attach event listeners for notificationsList and markAllAsReadBtn
-        // Add defensive checks: Ensure elements exist before adding listeners
-        if (notificationsList) { // <--- Added defensive check
+        if (notificationsList) {
             notificationsList.addEventListener('click', async function (event) {
                 if (event.target.closest('.mark-as-read-btn')) {
                     event.preventDefault();
@@ -126,7 +122,7 @@
             });
         }
 
-        if (markAllAsReadBtn) { // <--- Added defensive check
+        if (markAllAsReadBtn) {
             markAllAsReadBtn.addEventListener('click', async function () {
                 try {
                     const response = await fetch('{{ route('notifications.mark_all_as_read') }}', {
@@ -145,7 +141,6 @@
             });
         }
 
-        // Initial fetch on page load
         fetchNotifications();
 
         // Periodically fetch notifications (e.g., every 30 seconds)

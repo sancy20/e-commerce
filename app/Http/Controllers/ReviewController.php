@@ -3,15 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Review;
 use Illuminate\Http\Request;
-use App\Models\Review; // Import Review model
-use Illuminate\Support\Facades\Auth; // To get the authenticated user
+use Illuminate\Support\Facades\Auth;
+use App\Notifications\NewReviewNotification;
 
 class ReviewController extends Controller
 {
-    /**
-     * Store a newly created review in storage.
-     */
     public function store(Request $request, Product $product)
     {
         $request->validate([
@@ -19,23 +17,26 @@ class ReviewController extends Controller
             'comment' => 'nullable|string|max:1000',
         ]);
 
-        // Check if the user has already reviewed this product
-        $existingReview = Review::where('user_id', Auth::id())
-                                ->where('product_id', $product->id)
-                                ->first();
-
+        $existingReview = $product->reviews()->where('user_id', Auth::id())->exists();
         if ($existingReview) {
             return redirect()->back()->with('error', 'You have already submitted a review for this product.');
         }
 
-        Review::create([
-            'product_id' => $product->id,
+        $review = $product->reviews()->create([
             'user_id' => Auth::id(),
             'rating' => $request->rating,
             'comment' => $request->comment,
-            'is_approved' => false, // Reviews are set to false by default, requiring admin approval
+            'is_approved' => true,
         ]);
 
-        return redirect()->back()->with('success', 'Your review has been submitted successfully and is awaiting approval!');
+        $admin = \App\Models\User::where('is_admin', true)->first();
+        if ($admin) {
+            $admin->notify(new NewReviewNotification($review, 'admin'));
+        }
+        if ($product->vendor) {
+            $product->vendor->notify(new NewReviewNotification($review, 'vendor'));
+        }
+
+        return redirect()->back()->with('success', 'Thank you for your review!');
     }
 }

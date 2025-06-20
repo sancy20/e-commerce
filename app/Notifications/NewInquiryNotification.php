@@ -6,6 +6,7 @@ use App\Models\Inquiry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 class NewInquiryNotification extends Notification implements ShouldQueue
 {
@@ -13,42 +14,26 @@ class NewInquiryNotification extends Notification implements ShouldQueue
 
     public Inquiry $inquiry;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct(Inquiry $inquiry)
     {
         $this->inquiry = $inquiry;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(object $notifiable): array
     {
-        $message = 'New inquiry from ' . ($this->inquiry->sender->name ?? 'Guest') . ': "' . \Illuminate\Support\Str::limit($this->inquiry->subject, 50) . '"';
+        $message = 'New inquiry from ' . ($this->inquiry->sender->name ?? 'Guest') . ': "' . Str::limit($this->inquiry->subject, 50) . '"';
         $url = '';
         $icon = 'fa-envelope';
 
-        // Determine redirect URL based on recipient type
         if ($notifiable->isAdmin()) {
-            // Link to admin inbox or specific inquiry details if you build it
-            $url = route('admin.dashboard'); // For now, link to general admin dashboard
+            $url = route('admin.inquiries.show', $this->inquiry->id);
         } elseif ($notifiable->isVendor()) {
-            // Link to vendor inbox/inquiry details if you build it
-            $url = route('vendor.dashboard'); // For now, link to general vendor dashboard
+            $url = route('vendor.dashboard'); // Vendor doesn't have inquiry show page yet, link to dashboard
         }
 
         return [
@@ -59,6 +44,7 @@ class NewInquiryNotification extends Notification implements ShouldQueue
             'message' => $message,
             'url' => $url,
             'icon' => $icon,
+            'source_type' => $this->inquiry->source_type, // <--- This correctly takes source_type from the Inquiry model
         ];
     }
 }

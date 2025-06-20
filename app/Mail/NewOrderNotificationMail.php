@@ -16,22 +16,16 @@ class NewOrderNotificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public Order $order;
-    public $recipientType; // 'admin' or 'vendor'
-    public $vendorItems; // Only for vendor notifications
+    public $recipientType;
+    public $vendorItems;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(Order $order, string $recipientType = 'admin', $vendorItems = null)
     {
         $this->order = $order;
         $this->recipientType = $recipientType;
-        $this->vendorItems = $vendorItems; // Filtered items for vendor
+        $this->vendorItems = $vendorItems; 
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         $subject = 'New Order Notification - #' . $this->order->order_number;
@@ -45,9 +39,6 @@ class NewOrderNotificationMail extends Mailable
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(

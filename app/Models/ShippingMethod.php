@@ -22,9 +22,6 @@ class ShippingMethod extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get the orders that used this shipping method.
-     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

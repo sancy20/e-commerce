@@ -19,7 +19,7 @@ class LogLastEmailSent
             'to' => $event->message->getTo(),
             'from' => $event->message->getFrom(),
             'subject' => $event->message->getSubject(),
-            'body_length' => strlen($event->message->getBody()),
+            'body_length' => strlen($event->message->getHtmlBody() ?? $event->message->getTextBody() ?? ''),
             'sent_at' => now()->toDateTimeString(),
         ];
 

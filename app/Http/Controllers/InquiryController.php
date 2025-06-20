@@ -17,7 +17,6 @@ class InquiryController extends Controller
      */
     public function create(Product $product = null)
     {
-        // Optional: If product is passed, inquiry is product-specific
         return view('inquiries.create', compact('product'));
     }
 
@@ -42,9 +41,7 @@ class InquiryController extends Controller
             }
         }
 
-        // If no specific vendor/product or vendor is invalid, send to admin
         if (!$recipient) {
-            // Find a primary admin user (e.g., first one found, or specific email)
             $recipient = User::where('is_admin', true)->first();
             if (!$recipient) {
                 Log::error('Inquiry: No admin found to receive inquiry.');
@@ -59,12 +56,12 @@ class InquiryController extends Controller
                 'recipient_id' => $recipient->id,
                 'subject' => $request->subject,
                 'message' => $request->message,
+                'source_type' => 'general', // <--- FIX: Add this line to set the source type
             ]);
             Log::info('New inquiry created from user ID: ' . $sender->id . ' to recipient ID: ' . $recipient->id . ' Inquiry ID: ' . $inquiry->id);
 
             // Notify recipient (vendor or admin)
-            $recipient->notify(new NewInquiryNotification($inquiry)); // Database Notification
-            // Optional: Mail::to($recipient->email)->send(new NewInquiryEmail($inquiry));
+            $recipient->notify(new NewInquiryNotification($inquiry));
 
             return redirect()->route('dashboard.index')->with('success', 'Your inquiry has been sent!');
         } catch (\Exception $e) {

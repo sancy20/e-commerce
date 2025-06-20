@@ -8,11 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
-class AdminInquiryController extends Controller // THIS IS THE CLASS NAME
+class AdminInquiryController extends Controller
 {
-    /**
-     * Display a listing of inquiries for the admin.
-     */
     public function index(Request $request)
     {
         $query = Inquiry::with(['sender', 'product', 'recipient'])
@@ -35,9 +32,6 @@ class AdminInquiryController extends Controller // THIS IS THE CLASS NAME
         return view('admin.inquiries.index', compact('inquiries'));
     }
 
-    /**
-     * Display the specified inquiry.
-     */
     public function show(Inquiry $inquiry)
     {
         $inquiry->load(['sender', 'product.vendor', 'recipient', 'replies.sender']);
@@ -52,9 +46,6 @@ class AdminInquiryController extends Controller // THIS IS THE CLASS NAME
         return view('admin.inquiries.show', compact('inquiry'));
     }
 
-    /**
-     * Mark a specific inquiry as read directly via AJAX (from mail icon dropdown).
-     */
     public function markAsRead(Inquiry $inquiry)
     {
         if (!$inquiry->is_read) {
@@ -66,9 +57,6 @@ class AdminInquiryController extends Controller // THIS IS THE CLASS NAME
         return response()->json(['status' => 'already read']);
     }
 
-    /**
-     * Remove the specified inquiry from storage.
-     */
     public function destroy(Inquiry $inquiry)
     {
         try {
@@ -81,6 +69,4 @@ class AdminInquiryController extends Controller // THIS IS THE CLASS NAME
             return redirect()->back()->with('error', 'Failed to delete inquiry.');
         }
     }
-
-    // 'create', 'store', 'edit' methods are excluded.
 }

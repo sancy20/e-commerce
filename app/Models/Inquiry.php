@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany; // For replies
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Inquiry extends Model
 {
@@ -20,48 +20,36 @@ class Inquiry extends Model
         'message',
         'is_read',
         'replied_to_inquiry_id',
+        'vendor_reply',
+        'replied_at',
     ];
 
     protected $casts = [
         'is_read' => 'boolean',
         'source_type' => 'string',
+        'replied_at' => 'datetime',
     ];
 
-    /**
-     * Get the customer who sent the inquiry.
-     */
     public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Get the product related to the inquiry (if any).
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Get the user (vendor/admin) who is the recipient of the inquiry.
-     */
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_id');
     }
 
-    /**
-     * Get replies to this inquiry (if implementing threading).
-     */
     public function replies(): HasMany
     {
         return $this->hasMany(Inquiry::class, 'replied_to_inquiry_id');
     }
 
-    /**
-     * Get the parent inquiry if this is a reply.
-     */
     public function parentInquiry(): BelongsTo
     {
         return $this->belongsTo(Inquiry::class, 'replied_to_inquiry_id');

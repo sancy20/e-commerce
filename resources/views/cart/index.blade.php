@@ -37,11 +37,19 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach ($cartDetails as $item)
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap flex items-center">
-                                    @if ($item['image'])
-                                        <img src="{{ asset('storage/' . $item['image']) }}" alt="{{ $item['name'] }}" class="h-12 w-12 object-cover rounded-full mr-4">
-                                    @endif
-                                    <span class="text-gray-900">{{ $item['name'] }}</span>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        @if ($item['image'])
+                                            <img src="{{ asset('storage/' . $item['image']) }}" alt="{{ $item['name'] }}" class="h-12 w-12 object-cover rounded-full mr-4">
+                                        @endif
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $item['name'] }}</div>
+                                            {{-- UPDATE: Display variant attributes if they exist --}}
+                                            @if (!empty($item['variant_name'])) 
+                                                <div class="text-xs text-gray-500">{{ $item['variant_name'] }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-900">{{ $item['sku'] ?? 'N/A' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-900">${{ number_format($item['price'], 2) }}</td>
@@ -49,9 +57,9 @@
                                     <form action="{{ route('cart.update') }}" method="POST" class="flex items-center">
                                         @csrf
                                         @method('PUT')
-                                        <input type="hidden" name="item_identifier" value="{{ $item['item_identifier'] }}"> {{-- Use item_identifier --}}
+                                        <input type="hidden" name="item_identifier" value="{{ $item['item_identifier'] }}">
                                         <input type="number" name="quantity" value="{{ $item['quantity'] }}" min="1"
-                                            class="form-input w-20 text-center border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                            class="form-input w-20 text-center border-gray-300 rounded-md shadow-sm">
                                         <button type="submit" class="ml-2 bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded text-sm">Update</button>
                                     </form>
                                 </td>

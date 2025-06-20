@@ -44,11 +44,6 @@
                 @enderror
             </div>
 
-            <div class="mb-4 flex items-center">
-                <input type="checkbox" name="is_approved" id="is_approved" class="mr-2 leading-tight" {{ old('is_approved', $review->is_approved) ? 'checked' : '' }}>
-                <label for="is_approved" class="text-gray-700 text-sm font-bold">Approve Review?</label>
-            </div>
-
             <div class="flex items-center justify-end">
                 <button type="submit" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Update Review</button>
             </div>

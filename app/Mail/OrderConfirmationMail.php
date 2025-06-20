@@ -2,47 +2,37 @@
 
 namespace App\Mail;
 
-use App\Models\Order; // Import Order model
+use App\Models\Order; 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Address; // For custom sender
+use Illuminate\Mail\Mailables\Address; 
 
 class OrderConfirmationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public Order $order; // Public property to make order available in template
+    public Order $order; 
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(Order $order)
     {
         $this->order = $order;
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address(config('mail.from.address'), config('mail.from.name')), // Use configured sender
+            from: new Address(config('mail.from.address'), config('mail.from.name')),
             subject: 'Your Order Confirmation - #' . $this->order->order_number,
         );
     }
-
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.orders.confirmation', // Path to markdown template
+            markdown: 'emails.orders.confirmation',
             with: [
                 'order' => $this->order,
             ],

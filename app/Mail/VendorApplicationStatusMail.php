@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\User; // Import User model
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,8 +16,8 @@ class VendorApplicationStatusMail extends Mailable
     use Queueable, SerializesModels;
 
     public User $user;
-    public string $status; // 'approved' or 'rejected'
-    public ?string $message; // Optional message
+    public string $status;
+    public ?string $message;
 
     /**
      * Create a new message instance.
@@ -29,9 +29,6 @@ class VendorApplicationStatusMail extends Mailable
         $this->message = $message;
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         $subject = 'Your Vendor Application Status Update';
@@ -47,9 +44,6 @@ class VendorApplicationStatusMail extends Mailable
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(

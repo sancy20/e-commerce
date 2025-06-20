@@ -24,9 +24,6 @@ class VendorPayout extends Model
         'paid_at' => 'datetime',
     ];
 
-    /**
-     * Get the vendor who received this payout.
-     */
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'vendor_id');

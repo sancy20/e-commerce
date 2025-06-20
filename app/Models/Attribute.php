@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str; // For slug generation
+use Illuminate\Support\Str;
 
 class Attribute extends Model
 {
@@ -16,10 +16,6 @@ class Attribute extends Model
         'slug',
     ];
 
-    /**
-     * The "booted" method of the model.
-     * Auto-generate slug.
-     */
     protected static function booted()
     {
         static::creating(function ($attribute) {
@@ -31,9 +27,6 @@ class Attribute extends Model
         });
     }
 
-    /**
-     * Get the attribute values for the attribute.
-     */
     public function values(): HasMany
     {
         return $this->hasMany(AttributeValue::class);

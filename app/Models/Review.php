@@ -26,17 +26,11 @@ class Review extends Model
         'replied_at' => 'datetime',
     ];
 
-    /**
-     * Get the product that this review belongs to.
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Get the user who wrote this review.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

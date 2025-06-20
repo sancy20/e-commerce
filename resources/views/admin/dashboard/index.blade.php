@@ -35,12 +35,12 @@
             <a href="{{ route('admin.users.index', ['vendor_status' => 'pending_vendor']) }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Review Applications</a>
         </div>
 
-        {{-- Pending Review Approvals Card --}}
+        <!-- {{-- Pending Review Approvals Card --}}
         <div class="bg-white rounded-lg shadow-md p-6 text-center border-l-4 border-yellow-500">
             <h2 class="text-xl font-semibold text-gray-800 mb-2">Pending Reviews</h2>
             <p class="text-4xl font-bold text-yellow-600 mb-4">{{ $pendingReviewApprovalsCount }}</p>
             <a href="{{ route('admin.reviews.index', ['is_approved' => 'false']) }}" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-md">Approve Reviews</a>
-        </div>
+        </div> -->
 
         {{-- Pending Tier Upgrade Requests Card --}}
         <div class="bg-white rounded-lg shadow-md p-6 text-center border-l-4 border-purple-500">

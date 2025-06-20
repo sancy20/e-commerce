@@ -19,15 +19,25 @@
             </div>
 
             <h3 class="text-xl font-semibold text-gray-800 mb-3">Items in Your Order:</h3>
-            <div class="text-left max-w-xl mx-auto">
+            <div class="text-left max-w-2xl mx-auto">
                 @foreach ($order->orderItems as $item)
                     <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
                         <div class="flex items-center">
-                            @if ($item->product && $item->product->image)
-                                <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product->name }}" class="w-12 h-12 object-cover rounded-md mr-3">
+                            @php
+                                $image = ($item->variant && $item->variant->image) 
+                                    ? $item->variant->image 
+                                    : ($item->product->image ?? null);
+                            @endphp
+                            @if ($image)
+                                <img src="{{ asset('storage/' . $image) }}" alt="{{ $item->product->name ?? 'Product image' }}" class="w-12 h-12 object-cover rounded-md mr-3">
                             @endif
                             <div>
                                 <p class="font-medium">{{ $item->product->name ?? 'Product Not Found' }}</p>
+                                
+                                @if ($item->variant)
+                                    <p class="text-sm text-gray-500">{{ $item->variant->variant_name }}</p>
+                                @endif
+
                                 <p class="text-sm text-gray-600">Qty: {{ $item->quantity }} x ${{ number_format($item->price, 2) }}</p>
                             </div>
                         </div>
@@ -39,7 +49,6 @@
 
         <div class="mt-8 flex justify-center space-x-4">
             <a href="{{ route('products.index') }}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Continue Shopping</a>
-            {{-- You might add a link to user's order history here later --}}
         </div>
     </div>
 </div>

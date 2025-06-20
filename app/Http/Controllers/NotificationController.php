@@ -20,24 +20,36 @@ class NotificationController extends Controller
         }
 
         $unreadNotifications = $user->unreadNotifications()
-                                    ->orderBy('created_at', 'desc')
-                                    ->limit(10)
-                                    ->get()
-                                    ->map(function($notification) {
-                                        $data = $notification->data; // Laravel automatically casts to array/object
-                                        
-                                        // Ensure $data is an array to modify it safely
-                                        if (is_object($data)) {
-                                            $data = (array)$data; // Convert object to array
-                                        }
+        ->orderBy('created_at', 'desc')
+        ->limit(10)
+        ->get()
+        ->map(function($notification) {
+            $data = $notification->data; // Laravel automatically casts to array/object
 
-                                        // Add required frontend fields
-                                        $data['is_read'] = $notification->read_at !== null;
-                                        $data['notification_id'] = $notification->id;
-                                        $data['created_at_for_humans'] = $notification->created_at->diffForHumans();
-                                        
-                                        return $data;
-                                    });
+            // Ensure $data is an array to modify it safely
+            if (is_object($data)) {
+                $data = (array)$data;
+            }
+            
+            // Make sure these fields are always present and correctly typed
+            // Access these from the notification's original attributes directly
+            $data['notification_id'] = $notification->id; // The unique ID of the notification record
+            $data['is_read'] = $notification->read_at !== null;
+            $data['created_at_for_humans'] = $notification->created_at->diffForHumans();
+
+            // Ensure source_type is always present, even if it's not set in notification's toArray()
+            if (!isset($data['source_type'])) {
+                $data['source_type'] = 'unknown'; // Default if not set in toArray()
+            }
+
+            // Ensure message, url, icon are consistently present for frontend
+            // These should ideally come from toArray() but add defensive checks
+            if (!isset($data['message'])) { $data['message'] = 'No message provided.'; }
+            if (!isset($data['url'])) { $data['url'] = '#'; }
+            if (!isset($data['icon'])) { $data['icon'] = 'fa-info-circle'; }
+
+            return $data; // Return the modified data array
+        });
 
         Log::info('Fetched ' . $unreadNotifications->count() . ' unread notifications for user ID: ' . $user->id);
         return response()->json([
