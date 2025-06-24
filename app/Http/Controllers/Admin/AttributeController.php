@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attribute;
+use App\Models\AttributeValue;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AttributeController extends Controller
 {
@@ -60,5 +62,45 @@ class AttributeController extends Controller
 
         return redirect()->route('admin.attributes.index')
                          ->with('success', 'Attribute deleted successfully.');
+    }
+
+    public function updateValues(Request $request)
+    {
+        $request->validate([
+            'values' => 'nullable|array',
+            'values.*.value' => 'required|string|max:255',
+            'images' => 'nullable|array',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'remove_images' => 'nullable|array',
+        ]);
+
+        if ($request->has('values')) {
+            foreach($request->values as $id => $data) {
+                AttributeValue::find($id)->update($data);
+            }
+        }
+
+        if ($request->has('remove_images')) {
+            $valuesToUpdate = AttributeValue::whereIn('id', $request->remove_images)->get();
+            foreach ($valuesToUpdate as $value) {
+                if ($value->image) {
+                    Storage::disk('public')->delete($value->image);
+                    $value->image = null;
+                    $value->save();
+                }
+            }
+        }
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $valueId => $file) {
+                if ($value = AttributeValue::find($valueId)) {
+                    if ($value->image) Storage::disk('public')->delete($value->image);
+                    $value->image = $file->store('attributes', 'public');
+                    $value->save();
+                }
+            }
+        }
+
+        return back()->with('success', 'Attribute values updated successfully.');
     }
 }

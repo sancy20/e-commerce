@@ -16,17 +16,34 @@ class Product extends Model
     protected $fillable = [
         'vendor_id', 'category_id', 'name', 'slug', 'description', 
         'price', 'sku', 'image', 'stock_quantity', 'is_featured',
+        'vendor_id',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
         'price' => 'decimal:2',
     ];
+    
 
     protected static function booted()
     {
         static::creating(fn($product) => $product->slug = Str::slug($product->name));
         static::updating(fn($product) => $product->slug = Str::slug($product->name));
+    }
+
+    public function getCoverImageUrlAttribute(): string
+    {
+        if ($this->image) {
+            return asset('storage/' . $this->image);
+        }
+        if ($this->images()->exists()) {
+            return asset('storage/' . $this->images->first()->path);
+        }
+        if ($this->variants()->whereNotNull('image')->exists()) {
+            return asset('storage/' . $this->variants->firstWhere('image')->image);
+        }
+
+        return '';
     }
 
     public function category(): BelongsTo
@@ -55,12 +72,12 @@ class Product extends Model
 
     public function variants(): HasMany
     {
-        return $this->hasMany(ProductVariant::class);
+    return $this->hasMany(ProductVariant::class);
     }
 
     public function attributeValues(): MorphToMany
     {
-        return $this->morphToMany(AttributeValue::class, 'attributable');
+        return $this->morphToMany(AttributeValue::class, 'attributable', 'attributables');
     }
 
     public function hasVariants(): bool
@@ -115,14 +132,19 @@ class Product extends Model
             return '$' . number_format($this->price, 2);
         }
 
-        $minPrice = (float) $this->variants->min('price') ?? $this->price;
-        $maxPrice = (float) $this->variants->max('price') ?? $this->price;
+        $minPrice = $this->variants->min('price');
+        $maxPrice = $this->variants->max('price');
 
-        if ($minPrice === $maxPrice) {
+        if ($minPrice == $maxPrice) {
             return '$' . number_format($minPrice, 2);
         }
 
         return '$' . number_format($minPrice, 2) . ' - $' . number_format($maxPrice, 2);
+    }
+
+    public function images(): HasMany
+    {
+    return $this->hasMany(ProductImage::class);
     }
 
 }

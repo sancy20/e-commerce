@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Attribute;
+use App\Models\ProductVariant;
+use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -29,34 +31,32 @@ class VendorProductController extends Controller
     public function create()
     {
         $mainCategories = Category::whereNull('parent_id')->with('children')->get();
-        $attributes = \App\Models\Attribute::all();
+        $attributes = Attribute::with('values')->get();
+        
         return view('vendor.products.create', [
             'categories' => $mainCategories, 
             'attributes' => $attributes
         ]);
     }
 
-    /**
-     * UPDATE: This is the fully corrected store method.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('products')],
+            'name' => ['required', 'string', 'max:255', Rule::unique('products')->where('vendor_id', Auth::id())],
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'description' => 'nullable|string',
-            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products')],
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products')->where('vendor_id', Auth::id())],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-            'is_featured' => 'nullable', // Use nullable instead of boolean for checkboxes
-            'base_attribute_values' => 'nullable|array',
+            'is_featured' => 'nullable|boolean',
             'variants_data' => 'nullable|array',
             'variants_data.*.price' => 'required_with:variants_data|numeric|min:0',
             'variants_data.*.stock_quantity' => 'required_with:variants_data|integer|min:0',
             'variants_data.*.sku' => 'nullable|string|max:255|distinct',
             'variants_data.*.image' => 'nullable|image|max:2048',
             'variants_data.*.attribute_values' => 'required_with:variants_data|array',
+            'gallery_images.*' => 'nullable|image|max:2048',
         ]);
 
         DB::beginTransaction();
@@ -71,10 +71,22 @@ class VendorProductController extends Controller
 
             $product = Product::create($productData);
 
-            // If variants are submitted, they take priority. Otherwise, save base attributes.
+            if ($request->hasFile('gallery_images')) {
+                foreach ($request->file('gallery_images') as $file) {
+                    $path = $file->store('products/gallery', 'public');
+                    $product->images()->create(['path' => $path]);
+                }
+            }
+
+
             if ($request->has('variants_data') && !empty($request->variants_data)) {
                 foreach ($request->variants_data as $variantData) {
-                    $variant = $product->variants()->create($variantData);
+                    $variant = $product->variants()->create([
+                        'price' => $variantData['price'],
+                        'sku' => $variantData['sku'],
+                        'stock_quantity' => $variantData['stock_quantity'],
+                    ]);
+
                     if (isset($variantData['image'])) {
                         $variant->image = $variantData['image']->store('products/variants', 'public');
                         $variant->save();
@@ -82,9 +94,6 @@ class VendorProductController extends Controller
                     $attributeValueIds = collect($variantData['attribute_values'])->flatten()->filter()->all();
                     $variant->attributeValues()->sync($attributeValueIds);
                 }
-            } elseif ($request->has('base_attribute_values')) {
-                $attributeValueIds = collect($request->base_attribute_values)->flatten()->filter()->all();
-                $product->attributeValues()->sync($attributeValueIds);
             }
 
             DB::commit();
@@ -101,7 +110,8 @@ class VendorProductController extends Controller
     {
         if ($product->vendor_id !== Auth::id()) { abort(403); }
         $mainCategories = Category::whereNull('parent_id')->with('children')->get();
-        $attributes = \App\Models\Attribute::all();
+        $attributes = Attribute::with('values')->get();
+
         return view('vendor.products.edit', [
             'product' => $product,
             'categories' => $mainCategories,
@@ -109,16 +119,22 @@ class VendorProductController extends Controller
         ]);
     }
 
-    /**
-     * UPDATE: This is the fully corrected update method.
-     */
     public function update(Request $request, Product $product)
     {
         if ($product->vendor_id !== Auth::id()) { abort(403); }
 
         $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('products')->ignore($product->id)],
-            // ... add other validation rules similar to the store method
+            'name' => ['required', 'string', 'max:255', Rule::unique('products')->where('vendor_id', Auth::id())->ignore($product->id)],
+            'category_id' => 'required|exists:categories,id',
+            'price' => 'required|numeric|min:0',
+            'stock_quantity' => 'required|integer|min:0',
+            'description' => 'nullable|string',
+            'sku' => ['nullable', 'string', 'max:255', Rule::unique('products')->where('vendor_id', Auth::id())->ignore($product->id)],
+            'image' => 'nullable|image|max:2048',
+            'is_featured' => 'nullable|boolean',
+            'delete_images' => 'nullable|array', 
+            'gallery_images.*' => 'nullable|image|max:2048',
+            
         ]);
 
         DB::beginTransaction();
@@ -137,20 +153,40 @@ class VendorProductController extends Controller
             
             $product->update($productData);
 
-            // Update base product attributes
-            $baseAttributeValueIds = collect($request->input('base_attribute_values', []))->flatten()->filter()->all();
-            $product->attributeValues()->sync($baseAttributeValueIds);
-
-            // Delete variants marked for removal
             if ($request->has('variants_to_delete')) {
-                $product->variants()->whereIn('id', $request->variants_to_delete)->delete();
+                $variantsToDelete = $product->variants()->whereIn('id', $request->variants_to_delete)->get();
+                foreach($variantsToDelete as $variant) {
+                    if ($variant->image) Storage::disk('public')->delete($variant->image);
+                    $variant->delete();
+                }
             }
 
-            // Update existing variants
+
+            if ($request->has('delete_images')) {
+                $imagesToDelete = ProductImage::whereIn('id', $request->delete_images)
+                                              ->where('product_id', $product->id)
+                                              ->get();
+                foreach ($imagesToDelete as $image) {
+                    Storage::disk('public')->delete($image->path);
+                    $image->delete();
+                }
+            }
+
+            if ($request->hasFile('gallery_images')) {
+                foreach ($request->file('gallery_images') as $file) {
+                    $path = $file->store('products/gallery', 'public');
+                    $product->images()->create(['path' => $path]);
+                }
+            }
+
             if ($request->has('existing_variants')) {
                 foreach ($request->existing_variants as $id => $variantData) {
                     if ($variant = $product->variants()->find($id)) {
-                        $variant->update($variantData);
+                        $variant->update([
+                            'price' => $variantData['price'],
+                            'sku' => $variantData['sku'],
+                            'stock_quantity' => $variantData['stock_quantity'],
+                        ]);
                         if (isset($variantData['remove_image'])) {
                             if($variant->image) Storage::disk('public')->delete($variant->image);
                             $variant->image = null;
@@ -166,10 +202,13 @@ class VendorProductController extends Controller
                 }
             }
 
-            // Create new variants
             if ($request->has('new_variants_data')) {
                  foreach ($request->new_variants_data as $variantData) {
-                    $variant = $product->variants()->create($variantData);
+                    $variant = $product->variants()->create([
+                        'price' => $variantData['price'],
+                        'sku' => $variantData['sku'],
+                        'stock_quantity' => $variantData['stock_quantity'],
+                    ]);
                     if (isset($variantData['image'])) {
                         $variant->image = $variantData['image']->store('products/variants', 'public');
                         $variant->save();
@@ -193,6 +232,9 @@ class VendorProductController extends Controller
     {
         if ($product->vendor_id !== Auth::id()) { abort(403); }
         if ($product->image) { Storage::disk('public')->delete($product->image); }
+        foreach($product->images as $image) {
+            Storage::disk('public')->delete($image->path);
+        }
         $product->delete();
         return redirect()->route('vendor.products.index')->with('success', 'Product deleted successfully.');
     }

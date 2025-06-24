@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Category;
 
 // --- Frontend Controllers ---
 use App\Http\Controllers\ProductController;
@@ -28,6 +29,7 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\VendorPayoutController;
 use App\Http\Controllers\Admin\AdminInquiryController;
+use App\Http\Controllers\Admin\AttributeRequestController;
 
 // --- Vendor Controllers ---
 use App\Http\Controllers\VendorOrderController;
@@ -38,6 +40,7 @@ use App\Http\Controllers\VendorUpgradeController;
 use App\Http\Controllers\VendorReviewController;
 use App\Http\Controllers\VendorConnectController;
 use App\Http\Controllers\VendorInquiryController;
+use App\Http\Controllers\Vendor\AttributeRequestController as VendorAttributeRequestController;
 
 // --- Shared Notification Controller ---
 use App\Http\Controllers\NotificationController;
@@ -164,6 +167,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Vendor Payouts Management
     Route::resource('vendor-payouts', VendorPayoutController::class)->except(['create', 'edit', 'show']);
+
+    Route::get('attribute-requests', [AttributeRequestController::class, 'index'])->name('attributes.requests.index');
+    Route::post('attribute-requests/{attributeValue}/approve', [\AttributeRequestController::class, 'approve'])->name('attributes.requests.approve');
+    Route::delete('attribute-requests/{attributeValue}', [AttributeRequestController::class, 'destroy'])->name('attributes.requests.destroy');
+
+    Route::post('attribute-values/update-all', [AttributeController::class, 'updateValues'])->name('attributes.values.update');
 });
 
 
@@ -207,6 +216,12 @@ Route::middleware(['auth', 'is_vendor'])->prefix('vendor')->name('vendor.')->gro
     Route::put('/inquiries/{inquiry}', [VendorInquiryController::class, 'update'])->name('inquiries.update');
     Route::post('/inquiries/{inquiry}/mark-as-read', [VendorInquiryController::class, 'markAsRead'])->name('inquiries.mark_as_read');
     Route::delete('/inquiries/{inquiry}', [VendorInquiryController::class, 'destroy'])->name('inquiries.destroy');
+
+    Route::post('attribute-requests', [VendorAttributeRequestController::class, 'store'])->name('attributes.request.store');
 });
+
+Route::get('/api/categories/{category}/attributes', function(Category $category) {
+    return response()->json($category->attributes()->with('values')->get());
+})->name('api.categories.attributes');
 
 require __DIR__.'/auth.php';

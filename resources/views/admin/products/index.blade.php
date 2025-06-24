@@ -27,11 +27,8 @@
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap">{{ $product->id }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if ($product->image)
-                                <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-12 w-12 object-cover rounded-full">
-                            @else
-                                <span class="text-gray-400">No Image</span>
-                            @endif
+                        <img src="{{ $product->cover_image_url }}" alt="{{ $product->name }}" class="h-12 w-12 object-cover rounded-full">
+                        <!-- <span class="text-gray-400">No Image</span> -->
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ $product->name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ $product->category->name ?? 'N/A' }}</td>

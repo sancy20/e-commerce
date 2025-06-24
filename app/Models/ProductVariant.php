@@ -11,12 +11,17 @@ class ProductVariant extends Model
 {
     use HasFactory;
 
+/**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'product_id',
-        'sku',
         'price',
+        'sku',
         'stock_quantity',
-        'image',
+        'image'
     ];
 
     protected $casts = [
@@ -32,8 +37,10 @@ class ProductVariant extends Model
 
     public function attributeValues(): BelongsToMany
     {
+        // This defines the many-to-many relationship using the pivot table.
         return $this->belongsToMany(AttributeValue::class, 'attribute_product_variant');
     }
+
 
     // public function attributeValues(): MorphToMany
     // {

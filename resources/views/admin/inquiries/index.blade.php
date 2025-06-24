@@ -8,7 +8,6 @@
     {{-- Main content wrapper with Flexbox --}}
     <div class="flex flex-col md:flex-row gap-8">
 
-        {{-- UPDATE: Filters moved to a left sidebar --}}
         <aside class="md:w-1/4 lg:w-1/5">
             <div class="bg-white shadow-md rounded-lg p-6">
                 <h3 class="text-xl font-semibold mb-4">Filters</h3>

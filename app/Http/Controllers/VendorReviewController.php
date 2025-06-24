@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Review;
+use Carbon\Carbon; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -57,7 +58,6 @@ class VendorReviewController extends Controller
              return redirect()->back()->with('error', 'Cannot reply to an unapproved review.');
         }
         if ($review->vendor_reply) {
-             // return redirect()->back()->with('error', 'You have already replied to this review.');
         }
 
         try {

@@ -95,11 +95,9 @@
         @forelse ($products as $product)
             <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col transform transition duration-300 hover:scale-105">
                 <a href="{{ route('products.show', $product->slug) }}">
-                    @if ($product->image)
-                        <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-full h-48 object-cover">
-                    @else
-                        <div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">No Image</div>
-                    @endif
+                <img src="{{ $product->cover_image_url }}" 
+                    alt="{{ $product->name }}" 
+                    class="w-full h-48 object-cover">
                 </a>
                 <div class="p-4 flex flex-col flex-grow">
                     <a href="{{ route('products.show', $product->slug) }}" class="text-xl font-semibold text-gray-800 hover:text-blue-600">{{ $product->name }}</a> 

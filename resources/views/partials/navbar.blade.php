@@ -70,7 +70,6 @@
             </div>
         </div>
 
-        {{-- UPDATE: This is the container for the full-width dropdown panels --}}
         <div 
             x-show="isOpen" 
             x-transition:enter="transition ease-out duration-200" 

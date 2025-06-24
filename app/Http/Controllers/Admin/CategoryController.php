@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Attribute;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -15,10 +16,12 @@ class CategoryController extends Controller
         return view('admin.categories.index', compact('categories'));
     }
 
-    public function create()
+    public function create(Category $category)
     {
+        $categories = Category::where('id', '!=', $category->id)->get();
         $mainCategories = Category::whereNull('parent_id')->orderBy('name')->get();
-        return view('admin.categories.create', compact('mainCategories'));
+        $attributes = Attribute::all();
+        return view('admin.categories.create', compact('mainCategories','category','attributes', 'categories'));
     }
 
     public function store(Request $request)
@@ -35,8 +38,9 @@ class CategoryController extends Controller
 
     public function edit(Category $category)
     {
-        $mainCategories = Category::whereNull('parent_id')->where('id', '!=', $category->id)->orderBy('name')->get();
-        return view('admin.categories.edit', compact('category', 'mainCategories'));
+        $categories = Category::where('id', '!=', $category->id)->get();
+        $attributes = Attribute::all();
+        return view('admin.categories.edit', compact('category', 'categories', 'attributes'));
     }
 
     public function update(Request $request, Category $category)
@@ -48,13 +52,16 @@ class CategoryController extends Controller
             })],
         ]);
 
-        if ($request->parent_id == $category->id) {
-            return redirect()->back()->withErrors(['parent_id' => 'A category cannot be its own parent.'])->withInput();
-        }
-
         $category->update($request->all());
 
+        if ($request->has('attributes')) {
+            $category->attributes()->sync($request->input('attributes'));
+        } else {
+            $category->attributes()->sync([]);
+        }
+    
         return redirect()->route('admin.categories.index')->with('success', 'Category updated successfully.');
+
     }
 
     public function destroy(Category $category)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,6 +64,18 @@ class VendorOrderController extends Controller
         $vendorId = Auth::id();
         Log::info('VendorOrderController@update initiated for order ID: ' . $order->id . ' by vendor ID: ' . $vendorId);
 
+        $validatedData = $request->validate([
+            'order_status' => ['required', 'string', Rule::in(['pending', 'processing', 'shipped', 'delivered', 'cancelled'])],
+            'payment_status' => ['required', 'string', Rule::in(['pending', 'paid', 'failed', 'refunded'])],
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        
+        $order->update([
+            'order_status' => $validatedData['order_status'],
+            'payment_status' => $validatedData['payment_status'],
+            'notes' => $validatedData['notes'],
+        ]);
+
         $hasVendorProducts = $order->orderItems->contains(function ($item) use ($vendorId) {
             return $item->product->vendor_id === $vendorId;
         });
@@ -73,7 +86,6 @@ class VendorOrderController extends Controller
         }
 
         $request->validate([
-            // Allow vendor to change limited statuses
             'order_status' => 'required|string|in:pending,processing,shipped,delivered,cancelled',
             'notes' => 'nullable|string|max:500',        
         ]);

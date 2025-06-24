@@ -43,7 +43,7 @@ class UserController extends Controller
             'business_address' => 'nullable|string|max:255',
             'business_description' => 'nullable|string|max:1000',
             // 'is_vendor' => 'boolean',
-            'is_admin' => 'boolean', 
+            // 'is_admin' => 'boolean', 
             'vendor_tier' => 'required_if:is_vendor,on|string|in:Silver,Gold,Diamond',
             'commission_rate' => 'required_if:is_vendor,on|numeric|min:0|max:1',
         ]);

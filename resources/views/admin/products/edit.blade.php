@@ -82,16 +82,28 @@
             </div> -->
 
             <div class="mt-6"><label class="block text-sm font-bold mb-2">Description:</label><textarea name="description" rows="5" class="shadow w-full">{{ old('description', $product->description) }}</textarea></div>
-            <div class="mt-6 mb-4">
-                <label class="block text-sm font-bold mb-2">Base Product Image:</label>
-                 @if ($product->image)
-                    <div class="mb-2">
-                        <p class="text-xs">Current:</p>
-                        <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="h-24 w-24 object-cover rounded">
-                        <label class="block mt-2 text-sm"><input type="checkbox" name="remove_base_image" value="1" class="mr-1"> Remove current image</label>
-                    </div>
-                @endif
-                <input type="file" name="image" class="shadow w-full">
+            <div class="mt-6 border-t pt-6">
+                <h3 class="text-lg font-semibold mb-2">Image Gallery</h3>
+                <p class="text-xs text-gray-500 mb-4">Upload additional images for the product gallery.</p>
+                
+                {{-- Display existing gallery images with delete checkboxes --}}
+                <div class="flex flex-wrap gap-4 mb-4">
+                    @foreach($product->images as $image)
+                        <div class="relative">
+                            <img src="{{ asset('storage/' . $image->path) }}" class="h-24 w-24 object-cover rounded">
+                            <label class="absolute top-0 right-0 -mt-2 -mr-2">
+                                <input type="checkbox" name="delete_images[]" value="{{ $image->id }}" class="form-checkbox h-5 w-5 text-red-600">
+                                <span class="text-xs text-red-600 font-bold">X</span>
+                            </label>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Field for uploading new gallery images --}}
+                <div>
+                    <label class="block text-sm font-bold mb-2">Add New Images:</label>
+                    <input type="file" name="gallery_images[]" multiple class="shadow w-full p-2 border rounded">
+                </div>
             </div>
 
             <h2 class="text-xl font-semibold mt-8 mb-4 border-t pt-4">Product Variants</h2>
@@ -105,38 +117,139 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const addVariantBtn = document.getElementById('add-variant-btn');
+    const categorySelect = document.getElementById('category_id');
     const variantsContainer = document.getElementById('variants-container');
-    const allAttributes = @json($attributes->load('values'));
+    const addVariantBtn = document.getElementById('add-variant-btn');
+    
+    // CORRECTED: This variable will hold the attributes loaded via API for the selected category.
+    let categoryAttributes = []; 
     let newVariantIndex = 0;
+    
+    const requestStoreUrl = '{{ route('vendor.attributes.request.store') }}';
+    const csrfToken = '{{ csrf_token() }}';
 
-    function createVariantRowHtml(isNew, data = {}) {
+    async function fetchAttributesForCategory(categoryId) {
+        variantsContainer.innerHTML = '<p class="text-gray-500">Loading attributes...</p>';
+        addVariantBtn.disabled = true;
+
+        if (!categoryId) {
+            variantsContainer.innerHTML = '<p class="text-sm text-gray-500">Please select a product category to manage variants.</p>';
+            return;
+        }
+
+        try {
+            // This API route must exist in your web.php or api.php file.
+            const response = await fetch(`/api/categories/${categoryId}/attributes`);
+            if (!response.ok) throw new Error('Network response was not ok.');
+            
+            categoryAttributes = await response.json();
+
+            variantsContainer.innerHTML = ''; // Clear loading message
+            if (categoryAttributes.length > 0) {
+                addVariantBtn.disabled = false;
+            } else {
+                variantsContainer.innerHTML = '<p class="text-sm text-gray-500">No attributes are configured for this category. You can still save the base product.</p>';
+            }
+            
+            reRenderAllVariants();
+
+        } catch (error) {
+            console.error('Error fetching attributes:', error);
+            variantsContainer.innerHTML = '<p class="text-red-500 font-bold">Could not load attributes for this category.</p><p class="text-xs text-gray-600">Please ensure the API route is correct and the server is running.</p>';
+        }
+    }
+
+    function createVariantRowHtml(isNew, data) {
         const index = isNew ? `new_${newVariantIndex}` : data.id;
         const namePrefix = isNew ? `new_variants_data[${index}]` : `existing_variants[${data.id}]`;
-        let hiddenIdInput = isNew ? '' : `<input type="hidden" name="${namePrefix}[id]" value="${data.id}">`;
-        
         let attributesHtml = '';
-        allAttributes.forEach(attribute => {
-            // UPDATE: Generate checkboxes for variants
-            let checkboxesHtml = '';
-            attribute.values.forEach(value => {
-                let isChecked = data.attribute_values && data.attribute_values.some(av => av.id === value.id);
-                checkboxesHtml += `<label class="inline-flex items-center mr-4"><input type="checkbox" name="${namePrefix}[attribute_values][${attribute.id}][]" value="${value.id}" class="form-checkbox" ${isChecked ? 'checked' : ''}><span class="ml-2">${value.value}</span></label>`;
+
+        if (categoryAttributes.length > 0) {
+            categoryAttributes.forEach(attribute => {
+                let optionsHtml = '';
+                const radioGroupName = `${namePrefix}[attribute_values][${attribute.id}]`;
+                
+                const approvedValues = attribute.values.filter(v => v.is_approved);
+
+                approvedValues.forEach(value => {
+                    const optionId = `variant_${index}_attr_${attribute.id}_val_${value.id}`;
+                    let isChecked = data.attribute_values && data.attribute_values.some(av => av.id === value.id);
+                    optionsHtml += `<label for="${optionId}" class="inline-flex items-center mr-4 cursor-pointer"><input type="radio" id="${optionId}" name="${radioGroupName}" value="${value.id}" class="form-radio" ${isChecked ? 'checked' : ''}><span class="ml-2">${value.value}</span></label>`;
+                });
+
+                attributesHtml += `<div class="flex-1 mb-2"><div class="flex justify-between items-center"><label class="block text-sm font-bold mb-2">${attribute.name}:</label><a href="#" class="text-xs text-blue-500 hover:underline" onclick="event.preventDefault(); requestNewValue(${attribute.id}, '${attribute.name}');">+ Request New</a></div><div class="flex flex-wrap">${optionsHtml}</div></div>`;
             });
-            attributesHtml += `<div class="flex-1"><label class="block text-sm font-bold mb-2">${attribute.name}:</label><div class="flex flex-wrap">${checkboxesHtml}</div></div>`;
-        });
+        }
         
-        let imagePreviewHtml = data.image ? `<div class="mt-2"><p class="text-xs">Current: <img src="{{ asset('storage') }}/${data.image}" class="h-10 w-10 inline-block ml-2"></p><label class="block mt-1 text-sm"><input type="checkbox" name="${namePrefix}[remove_image]" value="1" class="mr-1"> Remove</label></div>` : '';
-        return `<div class="variant-row border p-4 rounded-lg mb-4 bg-gray-50" data-variant-id="${data.id || 'new'}">${hiddenIdInput}<div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Variant Details</h3><button type="button" class="remove-variant-btn text-red-500 font-bold">Remove</button></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="col-span-full"><div class="flex flex-col space-y-2">${attributesHtml}</div></div><div><label class="block text-sm font-bold mb-2">Price:</label><input type="number" name="${namePrefix}[price]" step="0.01" class="shadow w-full" value="${data.price || ''}" required></div><div><label class="block text-sm font-bold mb-2">SKU:</label><input type="text" name="${namePrefix}[sku]" class="shadow w-full" value="${data.sku || ''}"></div><div><label class="block text-sm font-bold mb-2">Stock:</label><input type="number" name="${namePrefix}[stock_quantity]" class="shadow w-full" value="${data.stock_quantity || 0}" required></div><div class="col-span-full"><label class="block text-sm font-bold mb-2">Image:</label><input type="file" name="${namePrefix}[image]" class="shadow w-full">${imagePreviewHtml}</div></div></div>`;
+        const imagePreviewHtml = data.image ? `<div class="mt-2"><p class="text-xs">Current: <img src="{{ asset('storage') }}/${data.image}" class="h-10 w-10 inline-block ml-2 object-cover"></p><label class="block mt-1 text-sm"><input type="checkbox" name="${namePrefix}[remove_image]" value="1" class="mr-1"> Remove</label></div>` : '';
+
+        return `
+        <div class="variant-row border p-4 rounded-lg mb-4 bg-gray-50" data-variant-id="${data.id || 'new'}">
+            ${isNew ? '' : `<input type="hidden" name="existing_variants[${data.id}][id]" value="${data.id}">`}
+            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Variant Details</h3><button type="button" class="remove-variant-btn text-red-500 font-bold hover:text-red-700">Remove</button></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="col-span-full"><div class="flex flex-col space-y-2">${attributesHtml}</div></div>
+                <div><label class="block text-sm font-bold mb-2">Price:</label><input type="number" name="${namePrefix}[price]" step="0.01" class="shadow w-full p-2 border rounded" value="${data.price || ''}" required></div>
+                <div><label class="block text-sm font-bold mb-2">SKU:</label><input type="text" name="${namePrefix}[sku]" class="shadow w-full p-2 border rounded" value="${data.sku || ''}"></div>
+                <div><label class="block text-sm font-bold mb-2">Stock:</label><input type="number" name="${namePrefix}[stock_quantity]" class="shadow w-full p-2 border rounded" value="${data.stock_quantity || 0}" required></div>
+                <div class="col-span-full">
+                    <label class="block text-sm font-bold mb-2">Variant-Specific Image (Optional):</label>
+                    <input type="file" name="${namePrefix}[image]" class="shadow w-full p-2 border rounded">
+                    ${imagePreviewHtml}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    window.requestNewValue = function(attributeId, attributeName) {
+        const newValue = prompt(`Enter the new value you would like to request for the attribute "${attributeName}":`);
+        if (newValue && newValue.trim() !== '') {
+            fetch(requestStoreUrl, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ attribute_id: attributeId, value: newValue })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Success! Your request has been submitted for approval.');
+                } else {
+                    alert('Error: ' + (data.message || 'Could not submit request.'));
+                }
+            })
+            .catch(error => console.error('Request Error:', error));
+        }
     }
 
     function addRow(isNew, data = {}) {
         variantsContainer.insertAdjacentHTML('beforeend', createVariantRowHtml(isNew, data));
         if (isNew) newVariantIndex++;
     }
+    
+    function reRenderAllVariants() {
+        const existingVariantsData = @json($product->variants->load('attributeValues'));
+        const oldExisting = @json(old('existing_variants'));
+        const oldNew = @json(old('new_variants_data'));
 
-    addVariantBtn.addEventListener('click', () => addRow(true, { attribute_values: [] }));
+        variantsContainer.innerHTML = '';
+        newVariantIndex = 0;
 
+        if (oldExisting || oldNew) {
+            if (oldExisting) Object.values(oldExisting).forEach(v => addRow(false, v));
+            if (oldNew) Object.values(oldNew).forEach(v => addRow(true, v));
+        } else {
+            existingVariantsData.forEach(variant => addRow(false, variant));
+        }
+    }
+
+    addVariantBtn.addEventListener('click', () => { 
+        if (categoryAttributes.length > 0) {
+            addRow(true, { attribute_values: [] });
+        } else {
+            alert('Please select a category with attributes before adding a variant.');
+        }
+    });
+    
     variantsContainer.addEventListener('click', function (event) {
         if (event.target.classList.contains('remove-variant-btn')) {
             const variantRow = event.target.closest('.variant-row');
@@ -152,19 +265,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const oldExisting = @json(old('existing_variants'));
-    const oldNew = @json(old('new_variants_data'));
-    if (oldExisting || oldNew) {
-        if(oldExisting) Object.values(oldExisting).forEach(v => {
-            v.attribute_values = Object.entries(v.attribute_values||{}).flatMap(([_,vals])=>Array.isArray(vals)?vals.map(valId=>({id:parseInt(valId)})):[] );
-            addRow(false, v);
-        });
-        if(oldNew) Object.values(oldNew).forEach(v => {
-            v.attribute_values = Object.entries(v.attribute_values||{}).flatMap(([_,vals])=>Array.isArray(vals)?vals.map(valId=>({id:parseInt(valId)})):[] );
-            addRow(true, v);
-        });
+    categorySelect.addEventListener('change', (event) => {
+        fetchAttributesForCategory(event.target.value);
+    });
+
+    if (categorySelect.value) {
+        fetchAttributesForCategory(categorySelect.value);
     } else {
-        @json($product->variants->load('attributeValues')).forEach(v => addRow(false, v));
+        variantsContainer.innerHTML = '<p class="text-sm text-gray-500">Please select a product category to manage variants.</p>';
     }
 });
 </script>
