@@ -209,21 +209,6 @@ class ProductController extends Controller
                 }
             }
 
-            if ($request->has('delete_images')) {
-                $imagesToDelete = ProductImage::whereIn('id', $request->delete_images)->where('product_id', $product->id)->get();
-                foreach ($imagesToDelete as $image) {
-                    Storage::disk('public')->delete($image->path);
-                    $image->delete();
-                }
-            }
-
-            if ($request->hasFile('gallery_images')) {
-                foreach ($request->file('gallery_images') as $file) {
-                    $path = $file->store('products/gallery', 'public');
-                    $product->images()->create(['path' => $path]);
-                }
-            }
-
             DB::commit();
         return redirect()->route('admin.products.edit', $product->id)->with('success', 'Product updated successfully.');
 
