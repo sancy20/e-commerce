@@ -20,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
         // Tell Laravel to use Tailwind CSS for pagination links
         Paginator::useTailwind(); // Add this line
         // Or, if you prefer, use Bootstrap 5's Tailwind equivalent directly:
