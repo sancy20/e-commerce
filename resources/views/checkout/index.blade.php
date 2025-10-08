@@ -29,14 +29,21 @@
         <div class="lg:col-span-2">
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Order Summary</h2>
             @forelse ($cartDetails as $item)
-                <div class="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0">
+                <div class="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
                     <div class="flex items-center">
-                        @if ($item['product']->image)
-                            <img src="{{ asset('storage/' . $item['product']->image) }}" alt="{{ $item['product']->name }}" class="w-16 h-16 object-cover rounded-md mr-4">
+                        @if ($item['product']->image || $item['image'])
+                            <img src="{{ asset('storage/' . ($item['image'] ?? $item['product']->image)) }}" alt="{{ $item['name'] }}" class="w-16 h-16 object-cover rounded-md mr-4">
+                        @else
+                            <div class="w-16 h-16 bg-gray-200 rounded-md mr-4 flex items-center justify-center text-gray-500 text-xs">No Image</div>
                         @endif
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900">{{ $item['product']->name }}</h3>
+                            <h3 class="text-lg font-medium text-gray-900">{{ $item['name'] }}</h3>
+                            <p class="text-gray-600 text-sm">SKU: {{ $item['sku'] ?? 'N/A' }}</p>
+                            <p class="text-gray-600 text-sm">Price: ${{ number_format($item['price'], 2) }} each</p>
                             <p class="text-gray-600 text-sm">Quantity: {{ $item['quantity'] }}</p>
+                            @if($item['is_variant'] && isset($item['variant']))
+                                <p class="text-blue-600 text-xs">{{ $item['variant']->variant_name ?? 'Variant' }}</p>
+                            @endif
                         </div>
                     </div>
                     <span class="text-lg font-semibold text-gray-900">${{ number_format($item['subtotal'], 2) }}</span>
@@ -159,56 +166,81 @@
 @push('scripts')
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-    const stripe = Stripe('{{ config('cashier.key') }}');
-    const elements = stripe.elements();
-    const cardElement = elements.create('card');
-
-    cardElement.mount('#card-element');
-
+    // Initialize variables first
     const paymentForm = document.getElementById('payment-form');
     const paymentMethodSelect = document.getElementById('payment_method');
-    const shippingMethodSelect = document.getElementById('shipping_method_id'); // Get shipping select
+    const shippingMethodSelect = document.getElementById('shipping_method_id');
     const stripeCardElementContainer = document.getElementById('stripe-card-element-container');
     const cardErrors = document.getElementById('card-errors');
     const submitButton = document.getElementById('submit-button');
-
-    const subtotal = {{ $subtotal }}; // Pass subtotal from Blade to JS
+    const subtotal = {{ $subtotal }};
     const shippingCostDisplay = document.getElementById('shipping-cost-display');
     const finalTotalDisplay = document.getElementById('final-total-display');
+    
+    // Stripe configuration (only initialize if key exists)
+    let stripe = null;
+    let cardElement = null;
+    const stripeKey = '{{ config('cashier.key') }}';
+    
+    if (stripeKey && stripeKey !== '') {
+        try {
+            stripe = Stripe(stripeKey);
+            const elements = stripe.elements();
+            cardElement = elements.create('card');
+            cardElement.mount('#card-element');
+        } catch (error) {
+            console.error('Stripe initialization failed:', error);
+            // Hide Stripe option if it fails to initialize
+            document.querySelector('option[value="stripe"]').style.display = 'none';
+        }
+    } else {
+        // Hide Stripe option if no key is configured
+        document.querySelector('option[value="stripe"]').style.display = 'none';
+        console.warn('Stripe key not configured. Credit card payments are disabled.');
+    }
 
     // Function to update total display
     function updateTotals() {
-        let selectedShippingCost = parseFloat(shippingMethodSelect.options[shippingMethodSelect.selectedIndex].dataset.cost || 0);
+        const selectedOption = shippingMethodSelect.options[shippingMethodSelect.selectedIndex];
+        let selectedShippingCost = parseFloat(selectedOption?.dataset?.cost || 0);
         let currentTotal = subtotal + selectedShippingCost;
 
         shippingCostDisplay.textContent = '$' + selectedShippingCost.toFixed(2);
         finalTotalDisplay.textContent = '$' + currentTotal.toFixed(2);
     }
 
-    const stripePaymentMethodIdInput = document.getElementById('stripe_payment_method_id'); // Get the hidden input
+    const stripePaymentMethodIdInput = document.getElementById('stripe_payment_method_id');
 
-paymentMethodSelect.addEventListener('change', function() {
-    if (this.value === 'stripe') {
-        stripeCardElementContainer.classList.remove('hidden');
-        stripePaymentMethodIdInput.disabled = false; // ENABLE the hidden input
-    } else {
-        stripeCardElementContainer.classList.add('hidden');
-        stripePaymentMethodIdInput.disabled = true; // DISABLE the hidden input
-    }
-});
+    paymentMethodSelect.addEventListener('change', function() {
+        if (this.value === 'stripe') {
+            if (!stripe) {
+                alert('Credit card payment is not available. Please select Cash on Delivery.');
+                this.value = 'cash_on_delivery';
+                return;
+            }
+            stripeCardElementContainer.classList.remove('hidden');
+            stripePaymentMethodIdInput.disabled = false;
+        } else {
+            stripeCardElementContainer.classList.add('hidden');
+            stripePaymentMethodIdInput.disabled = true;
+        }
+    });
 
-paymentMethodSelect.dispatchEvent(new Event('change')); // Trigger change event on load
-
-    shippingMethodSelect.addEventListener('change', updateTotals); // Update total on shipping method change
-
+    paymentMethodSelect.dispatchEvent(new Event('change'));
+    shippingMethodSelect.addEventListener('change', updateTotals);
+    
     // Initial total calculation on page load
     updateTotals();
 
-
     paymentForm.addEventListener('submit', async function(event) {
         if (paymentMethodSelect.value === 'stripe') {
+            if (!stripe || !cardElement) {
+                alert('Credit card payment is not available. Please select Cash on Delivery.');
+                event.preventDefault();
+                return;
+            }
+            
             event.preventDefault();
-
             submitButton.disabled = true;
 
             const { paymentMethod, error } = await stripe.createPaymentMethod({
@@ -232,13 +264,15 @@ paymentMethodSelect.dispatchEvent(new Event('change')); // Trigger change event 
 
     @if(session('requires_action'))
         const clientSecret = '{{ session('payment_intent_client_secret') }}';
-        stripe.handleCardAction(clientSecret).then(function(result) {
-            if (result.error) {
-                alert(result.error.message);
-            } else {
-                window.location.href = '{{ route('checkout.confirmation', $order ?? '') }}';
-            }
-        });
+        if (stripe) {
+            stripe.handleCardAction(clientSecret).then(function(result) {
+                if (result.error) {
+                    alert(result.error.message);
+                } else {
+                    window.location.href = '{{ route('checkout.confirmation', $order ?? '') }}';
+                }
+            });
+        }
     @endif
 </script>
 @endpush

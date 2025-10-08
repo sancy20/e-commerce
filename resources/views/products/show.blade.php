@@ -53,7 +53,9 @@
             <div class="flex items-center text-gray-700 mb-6">
                 <span class="font-semibold mr-2">Availability:</span>
                 <span id="product-stock-display">
-                    @if ($product->effective_stock_quantity > 0)
+                    @if ($product->hasVariants())
+                        <span class="text-red-600">Please select options</span>
+                    @elseif ($product->effective_stock_quantity > 0)
                         <span class="text-green-600">{{ $product->effective_stock_quantity }} in stock</span>
                         @if ($product->effective_stock_quantity < 5)
                             <span class="ml-2 text-orange-500 text-sm">(Low stock!)</span>
@@ -98,14 +100,16 @@
                 {{-- END VARIANT SELECTION --}}
 
                 <div class="flex items-center mt-4">
-                    <input type="number" name="quantity" value="1" min="1" max="{{ $product->effective_stock_quantity }}"
+                    <input type="number" name="quantity" value="1" min="1" max="{{ $product->hasVariants() ? 0 : $product->effective_stock_quantity }}"
                         class="form-input w-24 text-center border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 mr-4"
                         id="quantity-input"
-                        @if ($product->effective_stock_quantity <= 0 && !$product->hasVariants()) disabled @endif>
+                        @if ($product->hasVariants() || $product->effective_stock_quantity <= 0) disabled @endif>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg"
                         id="add-to-cart-button"
-                        @if ($product->effective_stock_quantity <= 0 && !$product->hasVariants()) disabled @endif>
-                        @if ($product->effective_stock_quantity <= 0 && !$product->hasVariants())
+                        @if ($product->hasVariants() || $product->effective_stock_quantity <= 0) disabled @endif>
+                        @if ($product->hasVariants())
+                            Select Options
+                        @elseif ($product->effective_stock_quantity <= 0)
                             Out of Stock
                         @else
                             Add to Cart
@@ -251,10 +255,20 @@
 
 @push('scripts')
 <script>
+    // DEBUG: Show product data in console
+    console.log('=== PRODUCT DEBUG INFO ===');
+    console.log('Product has variants:', {{ $product->hasVariants() ? 'true' : 'false' }});
+    console.log('Product base stock:', {{ $product->stock_quantity }});
+    console.log('Product effective stock:', {{ $product->effective_stock_quantity }});
+    
     // Pass product data from Blade to JavaScript
     const productVariants = @json($product->variants->load('attributeValues.attribute')); // Ensure full variant data is loaded
     const attributes = @json(\App\Models\Attribute::with('values')->get()); // All possible attributes and their values
 
+    console.log('Product variants from server:', productVariants);
+    console.log('All attributes from server:', attributes);
+    
+    // Get DOM elements
     const attributeSelectors = document.querySelectorAll('.attribute-selector');
     const productPriceDisplay = document.getElementById('product-price-display');
     const productSkuDisplay = document.getElementById('product-sku-display');
@@ -264,6 +278,23 @@
     const productVariantIdInput = document.getElementById('product_variant_id_input');
     const variantSelectionMessage = document.getElementById('variant-selection-message');
     const productMainImage = document.getElementById('product-main-image');
+    
+    // Debug elements
+    const debugSelected = document.getElementById('debug-selected');
+    const debugVariants = document.getElementById('debug-variants');
+    const debugMatch = document.getElementById('debug-match');
+    
+    // Debug: Log the actual HTML of selectors
+    console.log('=== DROPDOWN HTML DEBUG ===');
+    document.querySelectorAll('.attribute-selector').forEach((selector, index) => {
+        console.log(`Selector ${index}:`, selector.outerHTML);
+        console.log(`Options:`, Array.from(selector.options).map(opt => ({value: opt.value, text: opt.text})));
+    });
+    
+    // Update debug display
+    if (debugVariants) {
+        debugVariants.innerHTML = `Variants: ${productVariants.length} found`;
+    }
 
     let selectedAttributeValues = {}; // Stores { attribute_id: attribute_value_id }
     const initialBasePrice = {{ $product->price }}; // Base product price for fallback
@@ -273,19 +304,24 @@
 
     function updateVariantDisplay() {
         let matchingVariant = null;
-        let currentSelectedValues = Object.values(selectedAttributeValues).filter(Boolean); // Filter out empty selections
+        let currentSelectedValues = Object.values(selectedAttributeValues).filter(value => value !== null && value !== '' && value !== undefined);
 
         // Check if all required selectors have a value chosen
         const allSelectorsFilled = attributeSelectors.length > 0 && Array.from(attributeSelectors).every(selector => selector.value !== '');
 
-        if (allSelectorsFilled) {
+        if (allSelectorsFilled && currentSelectedValues.length > 0) {
             variantSelectionMessage.classList.add('hidden');
+            
+            // Find matching variant
             for (const variant of productVariants) {
-                const variantAttributeValueIds = variant.attribute_values.map(av => av.id);
+                const variantAttributeValueIds = variant.attribute_values.map(av => parseInt(av.id));
+                const selectedIntValues = currentSelectedValues.map(val => parseInt(val));
+                
                 // Check if all selected values are present in the variant's attributes
-                const isMatch = currentSelectedValues.every(valId => variantAttributeValueIds.includes(valId));
-                // Also ensure the number of attributes matches (e.g., if product has Color & Size, both must be selected)
-                if (isMatch && variantAttributeValueIds.length === currentSelectedValues.length) {
+                const isMatch = selectedIntValues.every(valId => variantAttributeValueIds.includes(valId));
+                
+                // Also ensure the number of attributes matches
+                if (isMatch && variantAttributeValueIds.length === selectedIntValues.length) {
                     matchingVariant = variant;
                     break;
                 }
@@ -294,14 +330,34 @@
             variantSelectionMessage.classList.remove('hidden');
         }
 
+        // Update debug display
+        if (debugSelected) {
+            debugSelected.innerHTML = `Selected: ${JSON.stringify(selectedAttributeValues)}`;
+        }
+        if (debugMatch) {
+            debugMatch.innerHTML = `Match: ${matchingVariant ? 'Variant ' + matchingVariant.id : 'None'}`;
+        }
+
 
         if (matchingVariant) {
-            productPriceDisplay.textContent = '$' + (matchingVariant.price !== null ? matchingVariant.price.toFixed(2) : initialBasePrice.toFixed(2));
+            console.log('Updating UI for matching variant:', matchingVariant);
+            
+            // Handle price conversion (ensure it's a number)
+            const variantPrice = matchingVariant.price !== null ? parseFloat(matchingVariant.price) : initialBasePrice;
+            productPriceDisplay.textContent = '$' + variantPrice.toFixed(2);
+            
             productSkuDisplay.textContent = matchingVariant.sku || initialBaseSku || 'N/A';
             productStockDisplay.innerHTML = getStockDisplayHtml(matchingVariant.stock_quantity);
+            
+            // Enable quantity input and set proper limits
+            quantityInput.disabled = false;
             quantityInput.max = matchingVariant.stock_quantity;
-            quantityInput.value = Math.min(quantityInput.value, matchingVariant.stock_quantity); // Adjust quantity if too high
-            productVariantIdInput.value = matchingVariant.id; // Set hidden input for cart
+            quantityInput.min = 1;
+            quantityInput.value = Math.max(1, Math.min(quantityInput.value || 1, matchingVariant.stock_quantity));
+            
+            productVariantIdInput.value = matchingVariant.id;
+            
+            // Enable/disable cart button based on stock
             addToCartButton.disabled = matchingVariant.stock_quantity <= 0;
             addToCartButton.textContent = matchingVariant.stock_quantity <= 0 ? 'Out of Stock' : 'Add to Cart';
 
@@ -311,25 +367,42 @@
             } else if (initialBaseImage) {
                 productMainImage.src = initialBaseImage;
             }
+            
+            console.log('UI updated successfully');
         } else {
             // Reset to base product details if no matching variant is found (or not all attributes selected)
-            // Or if product has variants but none selected, it should default to out of stock for safety
-            if (attributeSelectors.length > 0 && !allSelectorsFilled) { // Product has variants, but selection is incomplete
+            if (attributeSelectors.length > 0 && !allSelectorsFilled) { 
+                // Product has variants, but selection is incomplete
                 productPriceDisplay.textContent = '$' + initialBasePrice.toFixed(2); // Still show base price
                 productSkuDisplay.textContent = initialBaseSku || 'N/A';
                 productStockDisplay.innerHTML = '<span class="text-red-600">Please select options</span>'; // Prompt selection
                 quantityInput.max = 0; // Effectively out of stock
-                quantityInput.value = 0;
+                quantityInput.value = 1;
+                quantityInput.disabled = true;
                 productVariantIdInput.value = '';
                 addToCartButton.disabled = true;
                 addToCartButton.textContent = 'Select Options';
                 if (initialBaseImage) { productMainImage.src = initialBaseImage; }
-            } else { // No variants, or no match for selected (shouldn't happen if allSelectorsFilled is true and variants exist)
+            } else if (attributeSelectors.length > 0 && allSelectorsFilled) { 
+                // All attributes selected but no matching variant found - this combination doesn't exist
+                productPriceDisplay.textContent = '$' + initialBasePrice.toFixed(2);
+                productSkuDisplay.textContent = initialBaseSku || 'N/A';
+                productStockDisplay.innerHTML = '<span class="text-red-600">This combination is not available</span>';
+                quantityInput.max = 0;
+                quantityInput.value = 1;
+                quantityInput.disabled = true;
+                productVariantIdInput.value = '';
+                addToCartButton.disabled = true;
+                addToCartButton.textContent = 'Not Available';
+                if (initialBaseImage) { productMainImage.src = initialBaseImage; }
+            } else { 
+                // No variants at all - use base product
                 productPriceDisplay.textContent = '$' + initialBasePrice.toFixed(2);
                 productSkuDisplay.textContent = initialBaseSku || 'N/A';
                 productStockDisplay.innerHTML = getStockDisplayHtml(initialBaseStock);
                 quantityInput.max = initialBaseStock;
-                quantityInput.value = Math.min(quantityInput.value, initialBaseStock);
+                quantityInput.value = Math.min(quantityInput.value || 1, initialBaseStock);
+                quantityInput.disabled = initialBaseStock <= 0;
                 productVariantIdInput.value = '';
                 addToCartButton.disabled = initialBaseStock <= 0;
                 addToCartButton.textContent = initialBaseStock <= 0 ? 'Out of Stock' : 'Add to Cart';
@@ -353,25 +426,81 @@
 
     attributeSelectors.forEach(selector => {
         selector.addEventListener('change', (event) => {
-            const attributeId = event.target.dataset.attributeId;
-            selectedAttributeValues[attributeId] = event.target.value ? parseInt(event.target.value) : null;
+            const attributeId = parseInt(event.target.dataset.attributeId);
+            const selectedValue = event.target.value;
+            
+            if (selectedValue && selectedValue !== '') {
+                selectedAttributeValues[attributeId] = parseInt(selectedValue);
+            } else {
+                selectedAttributeValues[attributeId] = null;
+            }
+            
             updateVariantDisplay();
         });
     });
 
     // Initialize display on page load if product has variants
     if (attributeSelectors.length > 0) {
+        console.log('Initializing variant selectors...');
+        console.log('Found selectors:', attributeSelectors.length);
+        
+        // Initialize selectedAttributeValues for all attributes
+        attributeSelectors.forEach((selector, index) => {
+            const attributeId = parseInt(selector.dataset.attributeId);
+            selectedAttributeValues[attributeId] = null;
+            console.log(`Selector ${index}: attribute ID ${attributeId}, current value: "${selector.value}"`);
+            
+            // If selector already has a value (pre-selected), capture it
+            if (selector.value && selector.value !== '') {
+                selectedAttributeValues[attributeId] = parseInt(selector.value);
+                console.log(`Pre-selected value found: ${selector.value}`);
+            }
+        });
+        
         // Pre-select options if old input exists (e.g., after validation error)
         @if(old('attribute_values'))
             @foreach(old('attribute_values') as $attributeId => $attributeValueId)
                 const selector = document.getElementById('attribute-{{ \App\Models\Attribute::find($attributeId)->slug ?? '' }}');
                 if(selector) {
                     selector.value = '{{ $attributeValueId }}';
-                    selectedAttributeValues['{{ $attributeId }}'] = parseInt('{{ $attributeValueId }}');
+                    selectedAttributeValues[{{ $attributeId }}] = parseInt('{{ $attributeValueId }}');
                 }
             @endforeach
         @endif
-         updateVariantDisplay(); // Call initially to set correct state based on pre-selected values (if any)
+        
+        console.log('Initial selectedAttributeValues:', selectedAttributeValues);
+        console.log('Number of product variants:', productVariants.length);
+        
+        updateVariantDisplay(); // Call initially to set correct state based on pre-selected values (if any)
+    } else {
+        console.log('No variant selectors found - product has no variants');
     }
+    
+    // Manual check function for debugging (move to global scope)
+    function manualCheck() {
+        console.log('=== MANUAL CHECK ===');
+        console.log('Current dropdown values:');
+        attributeSelectors.forEach((selector, index) => {
+            console.log(`Selector ${index}: ID=${selector.id}, value="${selector.value}", data-attribute-id="${selector.dataset.attributeId}"`);
+        });
+        
+        // Force re-read the values
+        attributeSelectors.forEach(selector => {
+            const attributeId = parseInt(selector.dataset.attributeId);
+            const selectedValue = selector.value;
+            
+            if (selectedValue && selectedValue !== '') {
+                selectedAttributeValues[attributeId] = parseInt(selectedValue);
+            } else {
+                selectedAttributeValues[attributeId] = null;
+            }
+        });
+        
+        console.log('Force-updated selectedAttributeValues:', selectedAttributeValues);
+        updateVariantDisplay();
+    }
+    
+    // Make function globally accessible
+    window.manualCheck = manualCheck;
 </script>
 @endpush

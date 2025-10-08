@@ -15,11 +15,24 @@ class LogLastEmailSent
      */
     public function handle(MessageSent $event): void
     {
+        // Get message body safely
+        $body = $event->message->getBody();
+        $bodyLength = 0;
+        
+        if (is_string($body)) {
+            $bodyLength = strlen($body);
+        } elseif (method_exists($body, 'toString')) {
+            $bodyLength = strlen($body->toString());
+        } elseif (method_exists($body, 'getBody')) {
+            $bodyContent = $body->getBody();
+            $bodyLength = is_string($bodyContent) ? strlen($bodyContent) : 0;
+        }
+
         $details = [
             'to' => $event->message->getTo(),
             'from' => $event->message->getFrom(),
             'subject' => $event->message->getSubject(),
-            'body_length' => strlen($event->message->getBody()),
+            'body_length' => $bodyLength,
             'sent_at' => now()->toDateTimeString(),
         ];
 

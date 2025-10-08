@@ -50,6 +50,9 @@ class CheckoutController extends Controller
             $itemSubtotal = $item['price'] * $item['quantity'];
             $subtotal += $itemSubtotal;
 
+            // Get the base product for display (even if it's a variant)
+            $baseProduct = $isVariant ? $itemModel->product : $itemModel;
+
             $cartDetails[] = [
                 'product_id' => $item['product_id'],
                 'product_variant_id' => $isVariant ? $item['product_variant_id'] : null,
@@ -60,7 +63,9 @@ class CheckoutController extends Controller
                 'sku' => $item['sku'],
                 'is_variant' => $isVariant,
                 'subtotal' => $itemSubtotal,
-                'item_identifier' => $itemIdentifier
+                'item_identifier' => $itemIdentifier,
+                'product' => $baseProduct, // Add the product relationship
+                'variant' => $isVariant ? $itemModel : null, // Add variant if applicable
             ];
         }
 
